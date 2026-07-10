@@ -6,6 +6,7 @@ import {
   set,
   update,
   push,
+  get
 } from "firebase/database";
 import {
   signInWithEmailAndPassword,
@@ -15,8 +16,7 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
   updatePassword,
-  signInAnonymously,
-  User,
+  User
 } from "firebase/auth";
 import {
   Home,
@@ -26,17 +26,12 @@ import {
   Key,
   Pencil,
   ChevronLeft,
-  ChevronRight,
   Coins,
   ShoppingCart,
   Heart,
-  Gift,
   FileText,
-  RotateCcw,
-  MessageSquare,
   AlertTriangle,
   Loader2,
-  Smartphone,
   CheckCircle2,
   Lock,
   Mail,
@@ -47,38 +42,38 @@ import {
   Bell,
   History as HistoryIcon,
   ShieldCheck,
-  HelpCircle,
   Send,
   Gamepad2,
   Settings,
-  Clock,
   XCircle,
   Info,
-  Flame,
   Activity,
+  Globe,
   DollarSign,
-  RefreshCw,
+  Phone,
+  Gift
 } from "lucide-react";
 import { auth, db } from "./firebase";
-import { GamePackage, UserData } from "./types";
+import { UserData } from "./types";
+import { servicesData, ServiceItem, GamePackage, exchangeRates } from "./data/packages";
+import Logo from "./components/Logo";
 import ProfileSection from "./components/ProfileSection";
 import HistorySection from "./components/HistorySection";
+import AdminSection from "./components/AdminSection";
 
 export default function App() {
   // Splash & Initialization State
   const [authInitializing, setAuthInitializing] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState<UserData & { avatarId?: string } | null>(null);
+  const [userData, setUserData] = useState<(UserData & { avatarId?: string; phone?: string; country?: string; referralCode?: string }) | null>(null);
 
   // Active section configuration
-  const [activeSection, setActiveSection] = useState<"home" | "wallet" | "history" | "profile" | "topup">("home");
+  const [activeSection, setActiveSection] = useState<"home" | "wallet" | "history" | "profile" | "topup" | "admin">("home");
 
   // Profile interactive states
   const [profileActiveTab, setProfileActiveTab] = useState<
     "menu" | "overview" | "favorites" | "notifications" | "support" | "refer" | "policies" | "settings"
   >("menu");
-  const [profileTab, setProfileTab] = useState<"stats" | "history" | "notifications" | "support" | "settings">("stats");
-  const [profileSubView, setProfileSubView] = useState<string | null>(null);
   const [historySubTab, setHistorySubTab] = useState<"orders" | "deposits">("orders");
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [userDeposits, setUserDeposits] = useState<any[]>([]);
@@ -86,31 +81,35 @@ export default function App() {
   const [userTickets, setUserTickets] = useState<any[]>([]);
   const [supportTopic, setSupportTopic] = useState("");
   const [supportMessage, setSupportMessage] = useState("");
-  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
-
-  const avatars = [
-    { id: "vanguard", name: "Vanguard Gamer", bg: "from-red-600 to-red-950", color: "text-red-500" },
-    { id: "jade", name: "Jade Warrior", bg: "from-emerald-600 to-emerald-950", color: "text-emerald-500" },
-    { id: "ghost", name: "Cypher Ghost", bg: "from-cyan-600 to-cyan-950", color: "text-cyan-500" },
-    { id: "elite", name: "Gold Elite", bg: "from-amber-600 to-amber-950", color: "text-amber-500" },
-    { id: "ninja", name: "Shadow Ninja", bg: "from-purple-600 to-purple-950", color: "text-purple-500" },
-    { id: "phoenix", name: "Phoenix Rise", bg: "from-orange-600 to-orange-950", color: "text-orange-500" },
-  ];
 
   // Auth views
   const [authView, setAuthView] = useState<"login" | "register">("login");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPass, setLoginPass] = useState("");
+  
+  // Registration Advanced Fields
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPass, setRegPass] = useState("");
+  const [regPhone, setRegPhone] = useState("");
+  const [regCountry, setRegCountry] = useState("Nepal");
+  const [regReferral, setRegReferral] = useState("");
 
-  // Topup section state
-  const [activeGame, setActiveGame] = useState<"Free Fire" | "PUBG Mobile" | "">("");
+  // Multi-Currency State
+  const [activeCurrency, setActiveCurrency] = useState<"NPR" | "AED" | "USD">("NPR");
+
+  // Active service selection (one of the 10 services)
+  const [activeService, setActiveService] = useState<ServiceItem | null>(null);
   const [selectedPkg, setSelectedPkg] = useState<GamePackage | null>(null);
-  const [playerUid, setPlayerUid] = useState("");
 
-  // Wallet deposit state
+  // Dynamic input fields state for active order
+  const [fieldsState, setFieldsState] = useState<any>({});
+
+  // Custom DB-loaded prices fallback map
+  const [dbPrices, setDbPrices] = useState<any>({});
+
+  // Wallet deposit options & state
+  const [depositMethod, setDepositMethod] = useState<"esewa" | "khalti" | "binance" | "uaebank">("esewa");
   const [walletAmt, setWalletAmt] = useState("");
   const [esewaNum, setEsewaNum] = useState("");
   const [esewaName, setEsewaName] = useState("");
@@ -138,19 +137,22 @@ export default function App() {
 
   // Slider Image Banner Carousel State
   const [slideIndex, setSlideIndex] = useState(0);
-
-  const promoBanners = [
+  const [dbBanners, setDbBanners] = useState<string[]>([
     "https://i.ibb.co/rG5h77vw/1770000367736-1a203456.jpg",
-    "https://i.ibb.co/7tFsSW46/1770040656764-0a668a00.jpg",
-  ];
+    "https://i.ibb.co/7tFsSW46/1770040656764-0a668a00.jpg"
+  ]);
+
+  // Is Admin detection
+  const isAdmin = currentUser?.email === "mandipmahato717@gmail.com" || (userData as any)?.role === "admin";
 
   // Auto-rotating Banner carousel
   useEffect(() => {
+    if (dbBanners.length <= 1) return;
     const timer = setInterval(() => {
-      setSlideIndex((prev) => (prev === 0 ? 1 : 0));
-    }, 4000);
+      setSlideIndex((prev) => (prev + 1) % dbBanners.length);
+    }, 4500);
     return () => clearInterval(timer);
-  }, []);
+  }, [dbBanners]);
 
   // Track Firebase Auth state
   useEffect(() => {
@@ -182,17 +184,30 @@ export default function App() {
       } else {
         const uniqueId = "BNY-" + Math.floor(10000 + Math.random() * 90000);
         set(userRef, {
-          name: "Guest Gamer",
-          email: currentUser.email || "guest@bnytopup.com",
+          name: regName || "BNY Guest",
+          email: currentUser.email || "guest@bnyshop.com",
           uniqueId: uniqueId,
           balance: 0,
           blocked: false,
-          avatarId: "vanguard"
+          avatarId: "vanguard",
+          phone: regPhone || "",
+          country: regCountry || "Nepal",
+          referralCode: regReferral || "",
+          role: currentUser.email === "mandipmahato717@gmail.com" ? "admin" : "user"
         }).catch((err) => console.error("Error initializing user data:", err));
       }
     });
 
-    // Fetch user orders history
+    // Fetch dynamic customizable prices from DB
+    const pricesRef = ref(db, "custom_prices");
+    const unsubscribePrices = onValue(pricesRef, (snapshot) => {
+      const val = snapshot.val();
+      if (val) {
+        setDbPrices(val);
+      }
+    });
+
+    // Fetch user orders history (both standard UID orders and custom forms)
     const ordersRef = ref(db, `orders/${currentUser.uid}`);
     const unsubscribeOrders = onValue(ordersRef, (snapshot) => {
       const data = snapshot.val();
@@ -225,7 +240,18 @@ export default function App() {
       }
     });
 
-    // Fetch system notifications
+    // Fetch dynamic slide banners from DB
+    const bannersRef = ref(db, "banners");
+    const unsubscribeBanners = onValue(bannersRef, (snapshot) => {
+      const val = snapshot.val();
+      if (val && Array.isArray(val)) {
+        setDbBanners(val);
+      } else if (val) {
+        setDbBanners(Object.values(val));
+      }
+    });
+
+    // Fetch system notifications (filtered by personal user targetUid or global)
     const notificationsRef = ref(db, "notifications");
     const unsubscribeNotifications = onValue(notificationsRef, (snapshot) => {
       const data = snapshot.val();
@@ -233,31 +259,26 @@ export default function App() {
         const list = Object.keys(data).map(key => ({
           id: key,
           ...data[key]
-        })).sort((a, b: any) => b.timestamp - a.timestamp);
+        }))
+        .filter(notif => !notif.targetUid || notif.targetUid === currentUser.uid)
+        .sort((a, b: any) => b.timestamp - a.timestamp);
         setSystemNotifications(list);
       } else {
         // Fallback default notifications if database node is empty
         setSystemNotifications([
           {
             id: "default-1",
-            title: "🔥 Welcome to BNY TOPUP!",
-            body: "Get instant diamonds and UC directly credited. Live support is available 24/7.",
+            title: "🔥 Welcome to BNY SHOP!",
+            body: "Get instant game diamonds, streaming codes, and USDT exchanges active 24/7. Our priority is your trust.",
             timestamp: Date.now() - 3600000 * 2,
             type: "info"
           },
           {
             id: "default-2",
-            title: "⚡ FAST DELIVERY GUARANTEED",
-            body: "All top-up orders are processed within 5-15 minutes. Contact support via WhatsApp if delay occurs.",
+            title: "⚡ FAST DELIVERY ASSURED",
+            body: "All orders are processed in 5-15 minutes. Verification requests are monitored live.",
             timestamp: Date.now() - 3600000 * 24,
             type: "warning"
-          },
-          {
-            id: "default-3",
-            title: "💳 Esewa deposit method updated",
-            body: "Please make sure you only scan the new QR code in the wallet tab or pay to the official number 9825880400.",
-            timestamp: Date.now() - 3600000 * 48,
-            type: "news"
           }
         ]);
       }
@@ -280,50 +301,24 @@ export default function App() {
 
     return () => {
       unsubscribeDb();
+      unsubscribePrices();
       unsubscribeOrders();
       unsubscribeDeposits();
+      unsubscribeBanners();
       unsubscribeNotifications();
       unsubscribeTickets();
     };
   }, [currentUser]);
 
-  // Packages list
-  const gamePackages = {
-    "Free Fire": [
-      { n: "25💎", p: 25 },
-      { n: "50💎", p: 50 },
-      { n: "115💎", p: 90 },
-      { n: "240💎", p: 185 },
-      { n: "355💎", p: 285 },
-      { n: "480💎", p: 380 },
-      { n: "610💎", p: 470 },
-      { n: "725💎", p: 575 },
-      { n: "850💎", p: 675 },
-      { n: "965💎", p: 760 },
-      { n: "1090💎", p: 870 },
-      { n: "1240💎", p: 950 },
-      { n: "1480💎", p: 1130 },
-      { n: "1595💎", p: 1215 },
-      { n: "1850💎", p: 1395 },
-      { n: "2090💎", p: 1595 },
-      { n: "2530💎", p: 1870 },
-      { n: "5060💎", p: 3740 },
-      { n: "10120💎", p: 7460 },
-      { n: "Weekly Membership", p: 185 },
-      { n: "Monthly Membership", p: 900 },
-    ],
-    "PUBG Mobile": [
-      { n: "60 UC", p: 135 },
-      { n: "120 UC", p: 280 },
-      { n: "240 UC", p: 500 },
-      { n: "325 UC", p: 700 },
-      { n: "660 UC", p: 1300 },
-      { n: "720 UC", p: 1580 },
-      { n: "1500 UC", p: 3300 },
-      { n: "1800 UC", p: 3700 },
-      { n: "3850 UC", p: 7350 },
-      { n: "8100 UC", p: 14300 },
-    ],
+  // Pricing Formatter Helper based on active currency choice
+  const convertAndFormatPrice = (baseNPR: number) => {
+    if (activeCurrency === "NPR") {
+      return `Rs. ${baseNPR}`;
+    } else if (activeCurrency === "USD") {
+      return `$${(baseNPR / exchangeRates.USD).toFixed(2)}`;
+    } else {
+      return `${(baseNPR / exchangeRates.AED).toFixed(2)} AED`;
+    }
   };
 
   // Auth Operations
@@ -345,8 +340,8 @@ export default function App() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regName || !regEmail || !regPass) {
-      alert("Please fill all fields.");
+    if (!regName || !regEmail || !regPass || !regPhone) {
+      alert("Please fill all required fields (Name, Email, Password, and WhatsApp Number).");
       return;
     }
     setLoading(true);
@@ -359,6 +354,11 @@ export default function App() {
         uniqueId: uniqueId,
         balance: 0,
         blocked: false,
+        phone: regPhone,
+        country: regCountry,
+        referralCode: regReferral,
+        avatarId: "vanguard",
+        role: regEmail === "mandipmahato717@gmail.com" ? "admin" : "user"
       });
     } catch (err: any) {
       alert(err.message || "Registration failed");
@@ -370,6 +370,7 @@ export default function App() {
   const handleLogout = async () => {
     if (confirm("Are you sure you want to log out?")) {
       await signOut(auth);
+      setActiveSection("home");
     }
   };
 
@@ -396,21 +397,6 @@ export default function App() {
     }
   };
 
-  const selectAvatar = async (avatarId: string) => {
-    if (!currentUser) return;
-    setLoading(true);
-    try {
-      await update(ref(db, `users/${currentUser.uid}`), {
-        avatarId,
-      });
-      setAvatarMenuOpen(false);
-    } catch (err: any) {
-      alert(err.message || "Failed to update avatar");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const submitSupportTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supportTopic.trim() || !supportMessage.trim() || !currentUser) {
@@ -428,9 +414,9 @@ export default function App() {
       });
       setSupportTopic("");
       setSupportMessage("");
-      alert("Support query submitted successfully! We will get back to you shortly.");
+      alert("Support message submitted successfully! We will get back to you shortly.");
     } catch (err: any) {
-      alert(err.message || "Failed to submit support ticket");
+      alert(err.message || "Failed to submit support request");
     } finally {
       setLoading(false);
     }
@@ -464,53 +450,119 @@ export default function App() {
   };
 
   // Order Operations
-  const openTopup = (gameName: "Free Fire" | "PUBG Mobile") => {
-    setActiveGame(gameName);
+  const openTopup = (service: ServiceItem) => {
+    setActiveService(service);
     setSelectedPkg(null);
-    setPlayerUid("");
+    setFieldsState({});
     setActiveSection("topup");
   };
 
+  // Place order for any of the 10 services
   const submitOrder = async () => {
-    if (!playerUid || !selectedPkg || !currentUser || !userData) {
-      alert("Select package & enter UID");
-      return;
+    if (!activeService || !currentUser || !userData) return;
+
+    // Retrieve final price (checks customizable db fallback prices)
+    let finalPriceNPR = 0;
+    let finalPackageName = "";
+
+    if (activeService.id === "usdt") {
+      // USDT is computed dynamically
+      const cryptoAmount = parseFloat(fieldsState.cryptoAmount);
+      const txType = fieldsState.txType; // "BUY (Rate: 152 NPR)" or "SELL"
+
+      if (!fieldsState.walletAddress || !fieldsState.network || !fieldsState.whatsappNumber || isNaN(cryptoAmount) || cryptoAmount < 50 || cryptoAmount > 1000 || !txType) {
+        alert("Please enter all required USDT parameters correctly ($50 to $1000 limit).");
+        return;
+      }
+
+      const isBuy = txType.includes("BUY");
+      finalPriceNPR = isBuy ? cryptoAmount * 152 : 0; // If they sell us, cost to place order is 0. Balance gets updated on approval!
+      finalPackageName = `${isBuy ? "BUY" : "SELL"} ${cryptoAmount} USDT (${fieldsState.network})`;
+    } else {
+      // Standard packages
+      if (!selectedPkg) {
+        alert("Please select a package size first.");
+        return;
+      }
+
+      // Read fallback db custom price or standard package price
+      const safeKey = selectedPkg.n.replace(/[.#$\[\]]/g, "_");
+      finalPriceNPR = dbPrices[activeService.id]?.[safeKey] ?? selectedPkg.p;
+      finalPackageName = selectedPkg.n;
+
+      // Validate dynamic fields based on configurations
+      for (const f of activeService.fields) {
+        if (!fieldsState[f.key]) {
+          alert(`Please enter a valid ${f.label}`);
+          return;
+        }
+      }
     }
-    if (userData.balance < selectedPkg.p) {
-      const missing = selectedPkg.p - userData.balance;
+
+    // Verify balance if user is buying (i.e. cost is above 0)
+    if (finalPriceNPR > 0 && userData.balance < finalPriceNPR) {
+      const missing = finalPriceNPR - userData.balance;
       setAlertModal({
         active: true,
-        message: `Insufficient Balance! Please deposit RS ${missing} first.`,
+        message: `Insufficient Balance! Please deposit ${convertAndFormatPrice(missing)} first.`,
       });
       return;
     }
 
     setLoading(true);
     try {
-      const newBal = userData.balance - selectedPkg.p;
-      await set(ref(db, `users/${currentUser.uid}/balance`), newBal);
+      // Deduct balance if purchasing
+      if (finalPriceNPR > 0) {
+        const newBal = userData.balance - finalPriceNPR;
+        await set(ref(db, `users/${currentUser.uid}/balance`), newBal);
+      }
 
-      // Record order inside user-specific orders node
-      const orderRef = ref(db, `orders/${currentUser.uid}`);
-      await push(orderRef, {
-        game: activeGame,
-        packageName: selectedPkg.n,
-        price: selectedPkg.p,
-        playerUid: playerUid,
+      // Push order to global node for admin auditing and individual user node
+      const orderId = push(ref(db, "all_orders")).key;
+      const userOrderId = push(ref(db, `orders/${currentUser.uid}`)).key;
+
+      const orderPayload = {
+        orderId,
+        userOrderId,
+        uid: currentUser.uid,
+        email: currentUser.email,
+        uniqueId: userData.uniqueId,
+        game: activeService.name,
+        packageName: finalPackageName,
+        price: finalPriceNPR,
         status: "pending",
         timestamp: Date.now(),
-      });
+        ...fieldsState
+      };
 
-      const msg = `🛒 *BNY TOPUP NEW ORDER* 🚀\n\n📦 *Purchased Package:* ${selectedPkg.n}\n💰 *Package Price:* RS ${selectedPkg.p}\n👤 *User Full Name:* ${userData.name}\n📧 *User Email Address:* ${currentUser.email}\n🆔 *User Unique ID:* ${userData.uniqueId}\n🎮 *Selected Game:* ${activeGame}\n🆔 *Player Game UID:* ${playerUid}`;
-      
-      const whatsappUrl = `https://wa.me/9779825880400?text=${encodeURIComponent(msg)}`;
+      const updates: any = {};
+      updates[`all_orders/${orderId}`] = orderPayload;
+      updates[`orders/${currentUser.uid}/${userOrderId}`] = orderPayload;
+      await update(ref(db), updates);
+
+      // Construct highly-polished WhatsApp notification text
+      const fieldsText = Object.keys(fieldsState)
+        .map(key => `🔸 *${key.toUpperCase()}:* ${fieldsState[key]}`)
+        .join("\n");
+
+      const msg = `🛒 *BNY SHOP NEW ORDER* 🚀\n\n` +
+                  `📦 *Product:* ${activeService.name}\n` +
+                  `💎 *Item:* ${finalPackageName}\n` +
+                  `💰 *Price:* NPR ${finalPriceNPR} (${convertAndFormatPrice(finalPriceNPR)})\n` +
+                  `👤 *User Name:* ${userData.name}\n` +
+                  `📧 *User Email:* ${currentUser.email}\n` +
+                  `🆔 *BNY Unique ID:* ${userData.uniqueId}\n\n` +
+                  `📝 *Fulfillment Details:*\n${fieldsText}`;
+
+      const whatsappUrl = `https://wa.me/9779827679425?text=${encodeURIComponent(msg)}`;
       window.open(whatsappUrl, "_blank");
-      
+
       setSelectedPkg(null);
-      setPlayerUid("");
+      setFieldsState({});
       setActiveSection("home");
+      alert("Order placed successfully! Redirecting to verification desk...");
     } catch (err: any) {
-      alert(err.message || "Order placement failed");
+      alert(err.message || "Failed to submit order");
     } finally {
       setLoading(false);
     }
@@ -521,10 +573,10 @@ export default function App() {
     setActiveSection("wallet");
   };
 
-  // Deposit operations
+  // Submit Deposit Transaction proof manually (No screenshot upload as requested!)
   const submitDeposit = async () => {
     if (!walletAmt || !esewaNum || !esewaName || !esewaTrx) {
-      alert("Fill all details");
+      alert("Please fill out all sender and transaction ID details.");
       return;
     }
     if (!currentUser || !userData) return;
@@ -541,11 +593,20 @@ export default function App() {
         senderNum: esewaNum,
         senderName: esewaName,
         timestamp: Date.now(),
+        paymentMethod: depositMethod.toUpperCase()
       });
 
-      const msg = `🚀 *BNY TOPUP DEPOSIT REQUEST* 🚀\n\n🆔 *User Unique ID:* ${userData.uniqueId}\n👤 *User Full Name:* ${userData.name}\n📧 *User Email Address:* ${currentUser.email}\n💰 *Deposit Amount:* RS ${walletAmt}\n📞 *Sender Esewa Number:* ${esewaNum}\n📝 *Sender Esewa Name:* ${esewaName}\n🔢 *Transaction Code:* ${esewaTrx}`;
-      
-      const whatsappUrl = `https://wa.me/9779825880400?text=${encodeURIComponent(msg)}`;
+      const msg = `🚀 *BNY SHOP DEPOSIT PROOF* 🚀\n\n` +
+                  `🆔 *BNY ID:* ${userData.uniqueId}\n` +
+                  `👤 *Member Name:* ${userData.name}\n` +
+                  `📧 *Member Email:* ${currentUser.email}\n` +
+                  `💳 *Method:* ${depositMethod.toUpperCase()}\n` +
+                  `💰 *Load Amount:* NPR ${walletAmt}\n` +
+                  `📞 *Sender Account:* ${esewaNum}\n` +
+                  `📝 *Account Name:* ${esewaName}\n` +
+                  `🔢 *Transaction Code:* ${esewaTrx}`;
+
+      const whatsappUrl = `https://wa.me/9779827679425?text=${encodeURIComponent(msg)}`;
       window.open(whatsappUrl, "_blank");
 
       // Reset fields
@@ -553,9 +614,9 @@ export default function App() {
       setEsewaNum("");
       setEsewaName("");
       setEsewaTrx("");
-      alert("Deposit request submitted successfully! Redirecting to verification team...");
+      alert("Deposit slip loaded! Our auditors will credit your balance shortly.");
     } catch (err: any) {
-      alert(err.message || "Failed to submit deposit");
+      alert(err.message || "Failed to log deposit");
     } finally {
       setLoading(false);
     }
@@ -573,59 +634,67 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans flex flex-col antialiased selection:bg-red-600 selection:text-white">
-      {/* 1. SPLASH LOADER */}
+    <div className="min-h-screen bg-bg-navy text-white font-sans flex flex-col antialiased selection:bg-brand-orange selection:text-white">
+      {/* AUTH INITIALIZING BANNER */}
+      {authInitializing && (
+        <div className="flex-1 flex flex-col justify-center items-center">
+          <Loader2 className="w-10 h-10 animate-spin text-brand-orange" />
+          <p className="text-xs text-zinc-500 font-mono mt-3 uppercase tracking-wider animate-pulse">
+            BNY SHOP &bull; SECURING CONNECTION
+          </p>
+        </div>
+      )}
 
-      {/* 2. AUTHENTICATION MODULE */}
+      {/* AUTH SCREEN VIEW */}
       {!currentUser && !authInitializing && (
-        <div id="auth-screen" className="flex-1 flex flex-col justify-center items-center px-4 py-12 bg-[radial-gradient(circle_at_center,_#1c0202_0%,_#000000_100%)]">
+        <div id="auth-screen" className="flex-1 flex flex-col justify-center items-center px-4 py-12 bg-[radial-gradient(circle_at_center,_#0b162c_0%,_#040810_100%)]">
           <motion.div
-            initial={{ y: -20, opacity: 0 }}
+            initial={{ y: -15, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.6 }}
-            className="font-orbitron text-4xl font-black text-red-600 mb-8 tracking-widest text-center"
-            style={{ textShadow: "0 0 15px rgba(255, 0, 0, 0.7)" }}
+            transition={{ duration: 0.5 }}
+            className="mb-8"
           >
-            BNY TOPUP
+            <Logo iconSize={32} textClass="text-3xl" />
           </motion.div>
 
           <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
+            initial={{ scale: 0.96, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="w-full max-w-md bg-[#121212] rounded-2xl border border-red-950 p-8 shadow-[0_0_40px_rgba(139,0,0,0.15)]"
+            transition={{ duration: 0.4, delay: 0.05 }}
+            className="w-full max-w-md bg-card-bg rounded-3xl border border-brand-blue/30 p-8 shadow-[0_0_50px_rgba(0,102,204,0.15)]"
           >
             {authView === "login" ? (
-              <form onSubmit={handleLogin} className="space-y-6">
-                <div className="text-center mb-4">
-                  <h2 className="text-xl font-orbitron font-bold tracking-wide">LOGIN</h2>
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div className="text-center mb-2">
+                  <h2 className="text-lg font-orbitron font-extrabold tracking-widest text-white uppercase">MEMBER PORTAL</h2>
+                  <p className="text-xs text-zinc-400 mt-1">Access your store wallets and order tracker</p>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Email Address</label>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Email Address</label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
                     <input
                       type="email"
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      placeholder="Enter your email"
-                      className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-10 py-3 rounded-lg focus:outline-none focus:border-red-600 transition-all font-mono text-sm"
+                      placeholder="Enter register email address"
+                      className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-10 py-3 rounded-xl focus:outline-none focus:border-brand-blue transition-all font-mono text-sm"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Password</label>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Security Password</label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
                     <input
                       type="password"
                       value={loginPass}
                       onChange={(e) => setLoginPass(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-10 py-3 rounded-lg focus:outline-none focus:border-red-600 transition-all font-mono text-sm"
+                      className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-10 py-3 rounded-xl focus:outline-none focus:border-brand-blue transition-all font-mono text-sm"
                       required
                     />
                   </div>
@@ -634,96 +703,144 @@ export default function App() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-red-800 to-red-600 hover:from-red-700 hover:to-red-500 active:scale-[0.98] transition-all py-3.5 rounded-lg font-bold tracking-widest text-sm flex items-center justify-center gap-2 cursor-pointer border border-red-500"
+                  className="w-full bg-gradient-to-r from-brand-blue to-brand-blue/90 hover:from-brand-blue hover:to-brand-blue active:scale-[0.98] transition-all py-3.5 rounded-xl font-bold font-orbitron tracking-widest text-xs flex items-center justify-center gap-2 cursor-pointer border border-brand-blue/50 shadow-[0_4px_15px_rgba(0,102,204,0.3)] mt-2"
                 >
                   {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <>
                       <UserCheck className="w-4 h-4" />
-                      LOGIN NOW
+                      ENTER BNY PORTAL
                     </>
                   )}
                 </button>
 
-                <p className="text-center text-zinc-400 text-sm mt-6">
-                  New member?{" "}
+                <p className="text-center text-zinc-400 text-xs mt-6">
+                  Not a store partner?{" "}
                   <span
-                    className="text-red-500 cursor-pointer hover:underline font-bold"
+                    className="text-brand-orange cursor-pointer hover:underline font-extrabold"
                     onClick={() => setAuthView("register")}
                   >
-                    Register
+                    Create Account
                   </span>
                 </p>
               </form>
             ) : (
-              <form onSubmit={handleRegister} className="space-y-5">
-                <div className="text-center mb-4">
-                  <h2 className="text-xl font-orbitron font-bold tracking-wide">CREATE ACCOUNT</h2>
-                  <p className="text-zinc-500 text-xs mt-1">Join BNY TOPUP and unlock instant game credits</p>
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div className="text-center mb-1">
+                  <h2 className="text-lg font-orbitron font-extrabold tracking-widest text-white uppercase font-black">STORE PARTNER REGISTRATION</h2>
+                  <p className="text-zinc-500 text-[11px] mt-1">Join BNY SHOP and load wallet credits instantly</p>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Full Name</label>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Display Name</label>
                   <input
                     type="text"
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
-                    placeholder="Enter your full name"
-                    className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-4 py-3 rounded-lg focus:outline-none focus:border-red-600 transition-all text-sm"
+                    placeholder="Enter full display name"
+                    className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue transition-all text-xs font-semibold"
                     required
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Email Address</label>
+                <div className="grid grid-cols-2 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">WhatsApp Number</label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
+                      <input
+                        type="text"
+                        value={regPhone}
+                        onChange={(e) => setRegPhone(e.target.value)}
+                        placeholder="9827679425"
+                        className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-9 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue transition-all text-xs font-mono font-bold"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Country Location</label>
+                    <select
+                      value={regCountry}
+                      onChange={(e) => setRegCountry(e.target.value)}
+                      className="w-full bg-black/50 border border-zinc-900 text-white px-4 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue text-xs font-bold"
+                    >
+                      <option value="Nepal">Nepal</option>
+                      <option value="UAE">United Arab Emirates</option>
+                      <option value="Qatar">Qatar</option>
+                      <option value="Malaysia">Malaysia</option>
+                      <option value="Others">Others</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Email Address</label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
                     <input
                       type="email"
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
-                      placeholder="Enter your email"
-                      className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-10 py-3 rounded-lg focus:outline-none focus:border-red-600 transition-all font-mono text-sm"
+                      placeholder="e.g. name@domain.com"
+                      className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-10 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue transition-all font-mono text-xs"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Create Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
-                    <input
-                      type="password"
-                      value={regPass}
-                      onChange={(e) => setRegPass(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-10 py-3 rounded-lg focus:outline-none focus:border-red-600 transition-all font-mono text-sm"
-                      required
-                    />
+                <div className="grid grid-cols-2 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Create Password</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
+                      <input
+                        type="password"
+                        value={regPass}
+                        onChange={(e) => setRegPass(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-9 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue transition-all font-mono text-xs"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Referral (Optional)</label>
+                    <div className="relative">
+                      <Gift className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
+                      <input
+                        type="text"
+                        value={regReferral}
+                        onChange={(e) => setRegReferral(e.target.value)}
+                        placeholder="e.g. BNY-552"
+                        className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-9 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue transition-all font-mono text-xs"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-red-800 to-red-600 hover:from-red-700 hover:to-red-500 active:scale-[0.98] transition-all py-3.5 rounded-lg font-bold tracking-widest text-sm flex items-center justify-center gap-2 cursor-pointer border border-red-500"
+                  className="w-full bg-gradient-to-r from-brand-orange to-brand-orange/90 hover:from-brand-orange hover:to-brand-orange active:scale-[0.98] transition-all py-3.5 rounded-xl font-bold font-orbitron tracking-widest text-xs flex items-center justify-center gap-2 cursor-pointer border border-brand-orange/50 shadow-[0_4px_15px_rgba(243,91,4,0.3)]"
                 >
                   {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <>
                       <UserCheck className="w-4 h-4" />
-                      CREATE ACCOUNT
+                      INITIALIZE ACCOUNT
                     </>
                   )}
                 </button>
 
-                <p className="text-center text-zinc-400 text-sm mt-6">
-                  Already have an account?{" "}
+                <p className="text-center text-zinc-400 text-xs mt-4">
+                  Already registered?{" "}
                   <span
-                    className="text-red-500 cursor-pointer hover:underline font-bold"
+                    className="text-brand-orange cursor-pointer hover:underline font-extrabold"
                     onClick={() => setAuthView("login")}
                   >
                     Login
@@ -735,48 +852,77 @@ export default function App() {
         </div>
       )}
 
-      {/* 3. MAIN APPLICATION INTERFACE */}
+      {/* MAIN APPLICATION INTERFACE */}
       {currentUser && !authInitializing && (
-        <div id="app-content" className="flex-1 flex flex-col w-full max-w-3xl mx-auto pb-24 shadow-2xl min-h-screen bg-black">
+        <div id="app-content" className="flex-1 flex flex-col w-full max-w-3xl mx-auto pb-24 shadow-2xl min-h-screen bg-bg-navy border-x border-zinc-900/40">
           {/* Header Bar */}
-          <header className="sticky top-0 bg-black/90 backdrop-blur-md px-4 py-4 flex justify-between items-center border-b-2 border-red-900 z-50">
-            <div className="font-orbitron text-2xl font-black text-red-600 tracking-widest glow-red">
-              BNY TOPUP
-            </div>
-            <div className="flex items-center gap-2 border border-red-600 bg-red-950/20 px-3 py-1.5 rounded-md shadow-[inset_0_0_10px_rgba(255,0,0,0.15)]">
-              <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">Balance:</span>
-              <span className="text-red-500 font-bold font-mono text-sm">
-                RS {userData?.balance ?? 0}
-              </span>
+          <header className="sticky top-0 bg-bg-navy/90 backdrop-blur-md px-5 py-4 flex justify-between items-center border-b border-brand-blue/20 z-50">
+            <Logo iconSize={20} textClass="text-lg" />
+            
+            <div className="flex items-center gap-2.5">
+              {/* Currency Selector */}
+              <div className="flex items-center gap-1 bg-black/40 border border-zinc-900 rounded-xl px-2.5 py-1.5 text-[10px] font-extrabold font-mono text-zinc-400">
+                <Globe size={11} className="text-brand-blue" />
+                <select
+                  value={activeCurrency}
+                  onChange={(e) => setActiveCurrency(e.target.value as any)}
+                  className="bg-transparent focus:outline-none cursor-pointer uppercase text-white"
+                >
+                  <option value="NPR">NPR</option>
+                  <option value="AED">AED</option>
+                  <option value="USD">USD</option>
+                </select>
+              </div>
+
+              {/* Balance Widget */}
+              <div className="flex items-center gap-2 border border-brand-orange/40 bg-brand-orange/5 px-3py-1.5 rounded-xl shadow-[inset_0_0_10px_rgba(243,91,4,0.15)] h-8 px-3">
+                <span className="text-zinc-400 font-mono text-[9px] uppercase tracking-wider">Balance:</span>
+                <span className="text-brand-orange font-black font-mono text-xs">
+                  {convertAndFormatPrice(userData?.balance ?? 0)}
+                </span>
+              </div>
             </div>
           </header>
 
           {/* Dynamic home slider only shows in home section */}
           {activeSection === "home" && (
-            <div id="home-slider" className="w-full aspect-video relative overflow-hidden border-b border-red-900 bg-zinc-950">
+            <div id="home-slider" className="w-full aspect-video relative overflow-hidden border-b border-brand-blue/10 bg-zinc-950">
               <div
                 className="flex w-full h-full transition-transform duration-1000 ease-in-out"
                 style={{ transform: `translateX(-${slideIndex * 100}%)` }}
               >
-                {promoBanners.map((url, index) => (
-                  <div key={index} className="min-w-full h-full">
+                {dbBanners.map((url, index) => (
+                  <div key={index} className="min-w-full h-full relative">
                     <img
                       src={url}
-                      alt={`Banner ${index + 1}`}
+                      alt={`Promo Slide ${index + 1}`}
                       referrerPolicy="no-referrer"
                       className="w-full h-full object-cover"
                     />
+                    {/* Dark gradient mask */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-bg-navy via-transparent to-transparent"></div>
                   </div>
                 ))}
               </div>
+              
+              {/* Slider Tagline Overlay */}
+              <div className="absolute left-5 bottom-4 z-10 hidden sm:block">
+                <p className="font-orbitron font-extrabold text-sm text-brand-orange drop-shadow-md">
+                  OUR PRIORITY IS YOUR TRUST
+                </p>
+                <p className="text-[10px] text-zinc-300 font-medium">
+                  Instant Verification &middot; 24/7 Digital Dispatch
+                </p>
+              </div>
+
               {/* Pagination Dots */}
-              <div className="absolute bottom-3 right-4 flex gap-1.5">
-                {promoBanners.map((_, index) => (
+              <div className="absolute bottom-4 right-5 flex gap-1.5 z-10">
+                {dbBanners.map((_, index) => (
                   <div
                     key={index}
                     onClick={() => setSlideIndex(index)}
                     className={`w-2.5 h-1.5 rounded-full transition-all cursor-pointer ${
-                      slideIndex === index ? "w-6 bg-red-600" : "bg-zinc-700"
+                      slideIndex === index ? "w-6 bg-brand-orange" : "bg-zinc-700"
                     }`}
                   ></div>
                 ))}
@@ -787,177 +933,234 @@ export default function App() {
           {/* Dynamic Render Section Router */}
           <main className="flex-1 px-4 py-6">
             <AnimatePresence mode="wait">
-              {/* HOME SECTION */}
+              
+              {/* 1. HOME SECTION */}
               {activeSection === "home" && (
                 <motion.div
                   key="home"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.2 }}
                   className="space-y-6"
                 >
-                  <div>
-                    <h3 className="font-orbitron text-lg font-extrabold text-red-600 tracking-wider flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 bg-red-600 animate-pulse rounded-full"></span>
-                      POPULAR GAMES
-                    </h3>
-                    <p className="text-zinc-500 text-xs mt-1">Select a game title below to purchase packages instantly</p>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="font-orbitron text-md font-black text-white tracking-widest flex items-center gap-2">
+                        <span className="w-2 h-2 bg-brand-orange animate-ping rounded-full"></span>
+                        PREMIUM DIGITAL SERVICES
+                      </h3>
+                      <p className="text-zinc-500 text-[10px] font-mono mt-0.5">LOAD INSTANT STORE SERVICES & GAME CREDITS</p>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* Free Fire Card */}
-                    <div
-                      onClick={() => openTopup("Free Fire")}
-                      className="group bg-[#121212] rounded-2xl overflow-hidden border border-zinc-900 hover:border-red-600 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-[0_0_20px_rgba(255,0,0,0.1)] active:scale-95"
-                    >
-                      <div className="relative aspect-[4/3] overflow-hidden bg-black flex items-center justify-center p-2 border-b border-zinc-900/50">
-                        <img
-                          src="https://i.ibb.co/My1kJfTy/IMG-20260302-211532.jpg"
-                          alt="Free Fire"
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-contain group-hover:scale-105 transition-all duration-500"
-                        />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+                    {servicesData.map((service) => (
+                      <div
+                        key={service.id}
+                        onClick={() => openTopup(service)}
+                        className="group bg-card-bg rounded-2xl overflow-hidden border border-zinc-900 hover:border-brand-orange/60 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-[0_0_20px_rgba(243,91,4,0.1)] active:scale-95 flex flex-col justify-between"
+                      >
+                        <div className="relative aspect-[4/3] overflow-hidden bg-black/60 flex items-center justify-center p-2 border-b border-zinc-900/40">
+                          <img
+                            src={service.image}
+                            alt={service.name}
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-contain group-hover:scale-105 transition-all duration-500"
+                          />
+                          <span className="absolute top-2 right-2 bg-black/60 border border-zinc-800 text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase font-mono tracking-wider text-zinc-400">
+                            {service.category}
+                          </span>
+                        </div>
+                        <div className="p-3 text-center bg-black/10">
+                          <p className="font-bold tracking-wider text-xs text-white group-hover:text-brand-orange transition-colors">
+                            {service.name}
+                          </p>
+                        </div>
                       </div>
-                      <div className="p-3 text-center">
-                        <p className="font-bold tracking-wider text-sm group-hover:text-red-500 transition-colors">Free Fire</p>
-                      </div>
-                    </div>
-
-                    {/* PUBG Mobile Card */}
-                    <div
-                      onClick={() => openTopup("PUBG Mobile")}
-                      className="group bg-[#121212] rounded-2xl overflow-hidden border border-zinc-900 hover:border-red-600 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-[0_0_20px_rgba(255,0,0,0.1)] active:scale-95"
-                    >
-                      <div className="relative aspect-[4/3] overflow-hidden bg-black flex items-center justify-center p-2 border-b border-zinc-900/50">
-                        <img
-                          src="https://i.ibb.co/jPZjCShd/IMG-20260302-211625.jpg"
-                          alt="PUBG Mobile"
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-contain group-hover:scale-105 transition-all duration-500"
-                        />
-                      </div>
-                      <div className="p-3 text-center">
-                        <p className="font-bold tracking-wider text-sm group-hover:text-red-500 transition-colors">PUBG Mobile</p>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </motion.div>
               )}
 
-              {/* WALLET SECTION */}
+              {/* 2. WALLET SECTION */}
               {activeSection === "wallet" && (
                 <motion.div
                   key="wallet"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.2 }}
                   className="space-y-6"
                 >
-                  <div className="text-center py-6 bg-gradient-to-b from-[#121212] to-black rounded-2xl border border-zinc-900 space-y-1">
-                    <p className="text-zinc-500 text-xs uppercase tracking-widest">Available Balance</p>
-                    <h1 className="font-orbitron text-4xl font-extrabold text-red-600 tracking-wider">
-                      RS {userData?.balance ?? 0}
+                  <div className="text-center py-6 bg-gradient-to-b from-card-bg to-[#070b14] rounded-3xl border border-brand-blue/20 space-y-1 shadow-lg">
+                    <p className="text-zinc-400 text-[10px] uppercase font-mono tracking-widest">Available BNY Store Wallet</p>
+                    <h1 className="font-orbitron text-3xl font-extrabold text-brand-orange tracking-wider">
+                      {convertAndFormatPrice(userData?.balance ?? 0)}
                     </h1>
                   </div>
 
-                  <div className="flex flex-col items-center space-y-4">
-                    <div className="bg-white p-2.5 rounded-2xl border-4 border-red-600 shadow-[0_0_25px_rgba(255,0,0,0.2)] aspect-square w-52 h-52 flex items-center justify-center relative overflow-hidden">
-                      <img
-                        id="qr-display"
-                        src="https://i.ibb.co/8nFCFgqw/WA-1772424062040.jpg"
-                        alt="Esewa QR Code"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                    <div className="text-center space-y-1">
-                      <p className="text-zinc-400 text-xs">
-                        Scan the QR code or pay manually to the number:
-                      </p>
-                      <div className="flex items-center justify-center gap-2 mt-1">
-                        <b className="text-red-500 text-lg tracking-wider">9825880400</b>
+                  {/* Payment option selectors */}
+                  <div className="space-y-2">
+                    <span className="text-[10px] text-zinc-500 font-mono font-extrabold uppercase tracking-widest block">
+                      Choose Topup Method
+                    </span>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono">
+                      {[
+                        { id: "esewa", label: "eSewa", logo: "🟢" },
+                        { id: "khalti", label: "Khalti", logo: "🟣" },
+                        { id: "binance", label: "Binance Pay", logo: "🟡" },
+                        { id: "uaebank", label: "UAE Bank Transfer", logo: "🇦🇪" }
+                      ].map(method => (
                         <button
-                          onClick={() => copyToClipboard("9825880400", "esewa")}
-                          className="bg-red-950/40 hover:bg-red-900/60 p-1.5 rounded-md text-red-500 hover:text-white transition-colors cursor-pointer"
-                          title="Copy Number"
+                          key={method.id}
+                          onClick={() => setDepositMethod(method.id as any)}
+                          className={`flex items-center justify-center gap-1.5 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider border cursor-pointer transition-all ${
+                            depositMethod === method.id
+                              ? "bg-brand-orange/10 border-brand-orange text-brand-orange font-black"
+                              : "bg-black/20 border-zinc-900 text-zinc-400 hover:text-white"
+                          }`}
                         >
-                          {copiedEsewa ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          <span>{method.logo}</span>
+                          <span>{method.label}</span>
                         </button>
-                      </div>
-                      {copiedEsewa && (
-                        <p className="text-green-500 text-[10px] font-bold uppercase tracking-wider animate-pulse">
-                          Copied to clipboard!
-                        </p>
-                      )}
+                      ))}
                     </div>
                   </div>
 
-                  {/* Deposit Form */}
-                  <div className="bg-[#121212] p-6 rounded-2xl border border-zinc-900 space-y-4 shadow-md">
-                    <h3 className="font-orbitron font-bold text-sm text-red-500 uppercase tracking-widest border-b border-zinc-800 pb-2.5">
-                      SUBMIT TRANSACTION PROOF
+                  {/* QR Display Cards based on selection */}
+                  <div className="flex flex-col items-center space-y-4 py-3">
+                    {depositMethod === "uaebank" ? (
+                      <div className="bg-black/30 border border-zinc-900 rounded-3xl p-6 text-center max-w-sm space-y-4">
+                        <div className="w-14 h-14 bg-brand-orange/10 rounded-full flex items-center justify-center text-brand-orange mx-auto">
+                          🇦🇪
+                        </div>
+                        <h4 className="font-orbitron font-extrabold text-sm text-white uppercase tracking-widest">UAE Bank Details</h4>
+                        <p className="text-xs text-zinc-400 leading-relaxed font-mono">
+                          Direct AED bank transfer details are available on request. Please contact our support team on WhatsApp to load your wallet coordinates.
+                        </p>
+                        <a
+                          href="https://wa.me/9779827679425?text=Hello%20BNY%20Shop%2C%20I%20want%20to%20deposit%20via%20UAE%20Bank"
+                          target="_blank"
+                          className="inline-block bg-brand-orange text-white px-5 py-2 rounded-xl text-xs font-bold font-mono tracking-wider cursor-pointer uppercase transition-colors"
+                        >
+                          Text on WhatsApp
+                        </a>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="bg-white p-2.5 rounded-2xl border-4 border-brand-blue shadow-[0_0_25px_rgba(0,102,204,0.15)] aspect-square w-52 h-52 flex items-center justify-center relative overflow-hidden">
+                          <img
+                            id="qr-display"
+                            src={
+                              depositMethod === "esewa"
+                                ? "https://i.ibb.co/8nFCFgqw/WA-1772424062040.jpg" // Existing eSewa QR
+                                : depositMethod === "khalti"
+                                ? "https://i.ibb.co/8nFCFgqw/WA-1772424062040.jpg" // Fallback QR for Khalti as specified
+                                : "https://i.ibb.co/YF8r8tWk/binance-qr.png" // Generate/Show Binance ID QR
+                            }
+                            alt="Payment QR Code"
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+
+                        <div className="text-center space-y-1.5 font-mono">
+                          <p className="text-zinc-400 text-xs uppercase tracking-wider">
+                            {depositMethod === "binance" ? "Official Binance Pay ID" : "Manual Transfer Coordinates"}
+                          </p>
+                          <div className="flex items-center justify-center gap-2 mt-1">
+                            <b className="text-brand-orange text-lg tracking-wider">
+                              {depositMethod === "binance" ? "1107605273" : "9827679425"}
+                            </b>
+                            <button
+                              onClick={() => copyToClipboard(depositMethod === "binance" ? "1107605273" : "9827679425", "esewa")}
+                              className="bg-zinc-900 hover:bg-zinc-800 p-1.5 rounded-lg text-brand-orange hover:text-white border border-zinc-800 cursor-pointer transition-colors"
+                              title="Copy ID"
+                            >
+                              {copiedEsewa ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                          
+                          <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">
+                            Account Holder Name: <strong className="text-white">ANIL</strong>
+                          </p>
+
+                          {copiedEsewa && (
+                            <p className="text-emerald-500 text-[10px] font-bold uppercase tracking-wider animate-pulse font-sans">
+                              ID Copied to clipboard!
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Deposit Form (As requested: Screenshot uploads are removed, only textual parameters!) */}
+                  <div className="bg-card-bg p-6 rounded-3xl border border-zinc-900 space-y-4 shadow-md">
+                    <h3 className="font-orbitron font-extrabold text-xs text-brand-orange uppercase tracking-widest border-b border-zinc-900 pb-2.5">
+                      SUBMIT MANUAL TRANSACTION COORDINATES
                     </h3>
 
-                    <div className="space-y-4">
+                    <div className="space-y-4 text-xs font-mono">
                       <div>
-                        <label className="text-xs text-zinc-400 block mb-1">Deposit Amount (RS)</label>
+                        <label className="text-zinc-400 block mb-1">Deposit Amount (NPR)</label>
                         <input
                           type="number"
-                          placeholder="e.g. 500"
+                          placeholder="e.g. 1000"
                           value={walletAmt}
                           onChange={(e) => setWalletAmt(e.target.value)}
-                          className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-4 py-3 rounded-lg focus:outline-none focus:border-red-600 transition-all font-mono text-sm"
+                          className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-brand-blue transition-all"
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="text-xs text-zinc-400 block mb-1">Sender Esewa Number</label>
+                          <label className="text-zinc-400 block mb-1">Sender Mobile/Account Number</label>
                           <input
                             type="text"
                             placeholder="e.g. 98XXXXXXXX"
                             value={esewaNum}
                             onChange={(e) => setEsewaNum(e.target.value)}
-                            className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-4 py-3 rounded-lg focus:outline-none focus:border-red-600 transition-all font-mono text-sm"
+                            className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-brand-blue transition-all"
                           />
                         </div>
 
                         <div>
-                          <label className="text-xs text-zinc-400 block mb-1">Sender Esewa Name</label>
+                          <label className="text-zinc-400 block mb-1">Sender Display Name</label>
                           <input
                             type="text"
                             placeholder="e.g. Mandip Mahato"
                             value={esewaName}
                             onChange={(e) => setEsewaName(e.target.value)}
-                            className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-4 py-3 rounded-lg focus:outline-none focus:border-red-600 transition-all text-sm"
+                            className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-brand-blue transition-all text-xs font-sans"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="text-xs text-zinc-400 block mb-1">Transaction Code / ID</label>
+                        <label className="text-zinc-400 block mb-1">Transaction Ref Code / ID</label>
                         <input
                           type="text"
-                          placeholder="Enter exact Transaction ID"
+                          placeholder="Enter exact Transaction Reference ID"
                           value={esewaTrx}
                           onChange={(e) => setEsewaTrx(e.target.value)}
-                          className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-4 py-3 rounded-lg focus:outline-none focus:border-red-600 transition-all font-mono text-sm"
+                          className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-brand-blue transition-all"
                         />
                       </div>
 
                       <button
                         onClick={submitDeposit}
                         disabled={loading}
-                        className="w-full bg-gradient-to-r from-red-800 to-red-600 hover:from-red-700 hover:to-red-500 active:scale-[0.98] transition-all py-3.5 rounded-lg font-bold tracking-widest text-sm flex items-center justify-center gap-2.5 cursor-pointer border border-red-500 mt-2"
+                        className="w-full bg-gradient-to-r from-brand-orange to-brand-orange/90 hover:from-brand-orange hover:to-brand-orange active:scale-[0.98] transition-all py-3.5 rounded-xl font-bold font-orbitron tracking-widest text-xs flex items-center justify-center gap-2.5 cursor-pointer border border-brand-orange/40 mt-2"
                       >
                         {loading ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           <>
                             <MessageCircle className="w-4 h-4" />
-                            DEPOSIT VIA WHATSAPP
+                            DEPOSIT VIA WHATSAPP VERIFY
                           </>
                         )}
                       </button>
@@ -966,14 +1169,14 @@ export default function App() {
                 </motion.div>
               )}
 
-              {/* HISTORY SECTION */}
+              {/* 3. HISTORY SECTION */}
               {activeSection === "history" && (
                 <motion.div
                   key="history"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.2 }}
                 >
                   <HistorySection
                     userOrders={userOrders}
@@ -989,15 +1192,14 @@ export default function App() {
                 </motion.div>
               )}
 
-              {/* PROFILE SECTION */}
+              {/* 4. PROFILE SECTION */}
               {activeSection === "profile" && (
                 <motion.div
                   key="profile"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-6"
+                  transition={{ duration: 0.2 }}
                 >
                   <ProfileSection
                     userData={userData}
@@ -1022,98 +1224,141 @@ export default function App() {
                 </motion.div>
               )}
 
-              {/* TOPUP SECTION (DYNAMIC GAME SELECT) */}
-              {activeSection === "topup" && (
+              {/* 5. TOPUP SECTION (DYNAMIC 10 SERVICES FLOW) */}
+              {activeSection === "topup" && activeService && (
                 <motion.div
                   key="topup"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.2 }}
                   className="space-y-6"
                 >
-                  <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-                    <h2 className="font-orbitron text-xl font-black text-red-600 tracking-widest uppercase">
-                      Topup {activeGame}
+                  <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                    <h2 className="font-orbitron text-md font-black text-white tracking-widest uppercase">
+                      Topup {activeService.name}
                     </h2>
                     <button
                       onClick={() => {
                         setSelectedPkg(null);
-                        setPlayerUid("");
+                        setFieldsState({});
                         setActiveSection("home");
                       }}
-                      className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-white transition-colors uppercase tracking-wider cursor-pointer"
+                      className="flex items-center gap-1.5 text-[10px] text-zinc-500 hover:text-white transition-colors uppercase font-mono tracking-wider cursor-pointer"
                     >
                       <ChevronLeft className="w-4 h-4" />
-                      Back to Home
+                      Back to Services
                     </button>
                   </div>
 
-                  {/* Packages grid */}
-                  <div className="grid grid-cols-2 gap-3">
-                    {activeGame &&
-                      gamePackages[activeGame]?.map((pkg, idx) => (
-                        <div
-                          key={idx}
-                          onClick={() => {
-                            setSelectedPkg(pkg);
-                            // Scroll dynamically to buy-flow UID form
-                            setTimeout(() => {
-                              const elem = document.getElementById("buy-flow-section");
-                              if (elem) elem.scrollIntoView({ behavior: "smooth" });
-                            }, 100);
-                          }}
-                          className={`p-4 rounded-xl border text-center cursor-pointer transition-all duration-300 ${
-                            selectedPkg?.n === pkg.n
-                              ? "bg-red-950/20 border-red-600 shadow-[0_0_15px_rgba(255,0,0,0.1)]"
-                              : "bg-[#111] border-zinc-900 hover:border-zinc-800"
-                          }`}
-                        >
-                          <h4 className="font-bold text-white tracking-wide mb-1 text-sm">{pkg.n}</h4>
-                          <p className="text-xs font-mono text-red-500 font-bold">RS {pkg.p}</p>
-                        </div>
-                      ))}
-                  </div>
+                  {/* Render package options (Only if not USDT as USDT computes rate dynamically) */}
+                  {activeService.id !== "usdt" && (
+                    <div className="space-y-2">
+                      <span className="text-[10px] text-zinc-500 font-mono font-extrabold uppercase tracking-widest block">
+                        Select Packages
+                      </span>
+                      <div className="grid grid-cols-2 gap-3 font-mono">
+                        {activeService.packages.map((pkg, idx) => {
+                          const safeKey = pkg.n.replace(/[.#$\[\]]/g, "_");
+                          const currentPriceNPR = dbPrices[activeService.id]?.[safeKey] ?? pkg.p;
 
-                  {/* Purchase details flow */}
-                  {selectedPkg && (
+                          return (
+                            <div
+                              key={idx}
+                              onClick={() => {
+                                setSelectedPkg(pkg);
+                                setTimeout(() => {
+                                  const elem = document.getElementById("buy-flow-section");
+                                  if (elem) elem.scrollIntoView({ behavior: "smooth" });
+                                }, 100);
+                              }}
+                              className={`p-4 rounded-2xl border text-center cursor-pointer transition-all duration-300 ${
+                                selectedPkg?.n === pkg.n
+                                  ? "bg-brand-blue/10 border-brand-blue shadow-[0_0_15px_rgba(0,102,204,0.15)]"
+                                  : "bg-black/20 border-zinc-900 hover:border-zinc-800"
+                              }`}
+                            >
+                              <h4 className="font-bold text-white tracking-wide mb-1 text-xs">{pkg.n}</h4>
+                              <p className="text-xs font-mono text-brand-orange font-extrabold">
+                                {convertAndFormatPrice(currentPriceNPR)}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dynamic Fields Input & Order Flow */}
+                  {(selectedPkg || activeService.id === "usdt") && (
                     <motion.div
                       id="buy-flow-section"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="bg-[#121212] p-6 rounded-2xl border border-zinc-900 space-y-4 mt-8 shadow-md"
+                      className="bg-card-bg p-6 rounded-3xl border border-zinc-900 space-y-4 shadow-md"
                     >
-                      <div className="border-b border-zinc-800 pb-3 mb-1">
-                        <span className="text-xs text-zinc-500 block uppercase tracking-widest">Selected Item</span>
-                        <h3 className="font-orbitron font-bold text-red-500 text-lg">
-                          {selectedPkg.n} &mdash; RS {selectedPkg.p}
+                      <div className="border-b border-zinc-900 pb-3 mb-1">
+                        <span className="text-[10px] text-zinc-500 block uppercase font-mono tracking-widest">Store Order Summary</span>
+                        <h3 className="font-orbitron font-extrabold text-brand-orange text-md">
+                          {activeService.id === "usdt" ? (
+                            `USDT BUY/SELL TRANSACTION DESK`
+                          ) : (
+                            `${selectedPkg?.n} &mdash; ${convertAndFormatPrice(dbPrices[activeService.id]?.[selectedPkg!.n.replace(/[.#$\[\]]/g, "_")] ?? selectedPkg!.p)}`
+                          )}
                         </h3>
                       </div>
 
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-xs text-zinc-400 block mb-1.5">
-                            Enter Player Game UID
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="e.g. 5839218392"
-                            value={playerUid}
-                            onChange={(e) => setPlayerUid(e.target.value)}
-                            className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-4 py-3.5 rounded-lg focus:outline-none focus:border-red-600 transition-all font-mono text-sm"
-                            required
-                          />
-                        </div>
+                      {/* Display Dynamic Fields */}
+                      <div className="space-y-4 text-xs font-mono">
+                        {activeService.fields.map((f, fIdx) => (
+                          <div key={fIdx}>
+                            <label className="text-zinc-400 block mb-1.5">{f.label}</label>
+                            {f.type === "select" ? (
+                              <select
+                                value={fieldsState[f.key] || ""}
+                                onChange={(e) => setFieldsState({ ...fieldsState, [f.key]: e.target.value })}
+                                className="w-full bg-black/50 border border-zinc-900 text-white px-4 py-3 rounded-xl focus:outline-none focus:border-brand-blue font-bold text-xs"
+                              >
+                                <option value="">-- Choose Option --</option>
+                                {f.options?.map((opt, oIdx) => (
+                                  <option key={oIdx} value={opt}>{opt}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                type={f.type}
+                                placeholder={f.placeholder}
+                                value={fieldsState[f.key] || ""}
+                                onChange={(e) => setFieldsState({ ...fieldsState, [f.key]: e.target.value })}
+                                className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-brand-blue transition-all"
+                              />
+                            )}
+                          </div>
+                        ))}
+
+                        {/* USDT Dynamic Price Estimation Display */}
+                        {activeService.id === "usdt" && fieldsState.cryptoAmount && fieldsState.txType && (
+                          <div className="bg-black/40 border border-zinc-900 p-3.5 rounded-2xl flex justify-between items-center text-xs">
+                            <span className="text-zinc-500 font-bold uppercase">Estimated Transaction Price</span>
+                            <strong className="text-brand-orange font-black">
+                              {fieldsState.txType.includes("BUY") ? (
+                                `NPR ${parseFloat(fieldsState.cryptoAmount) * 152} (${convertAndFormatPrice(parseFloat(fieldsState.cryptoAmount) * 152)})`
+                              ) : (
+                                `You receive NPR ${parseFloat(fieldsState.cryptoAmount) * 160}`
+                              )}
+                            </strong>
+                          </div>
+                        )}
 
                         <button
                           onClick={submitOrder}
                           disabled={loading}
-                          className="w-full bg-gradient-to-r from-red-800 to-red-600 hover:from-red-700 hover:to-red-500 active:scale-[0.98] transition-all py-3.5 rounded-lg font-bold tracking-widest text-sm flex items-center justify-center gap-2 cursor-pointer border border-red-500"
+                          className="w-full bg-gradient-to-r from-brand-orange to-brand-orange/90 hover:from-brand-orange hover:to-brand-orange active:scale-[0.98] transition-all py-3.5 rounded-xl font-bold font-orbitron tracking-widest text-xs flex items-center justify-center gap-2 cursor-pointer border border-brand-orange/40 shadow-[0_4px_15px_rgba(243,91,4,0.35)] mt-2"
                         >
                           {loading ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
-                            "CONFIRM ORDER"
+                            "CONFIRM STORE PURCHASE"
                           )}
                         </button>
                       </div>
@@ -1121,29 +1366,43 @@ export default function App() {
                   )}
                 </motion.div>
               )}
+
+              {/* 6. ADMIN PORTAL SECTION */}
+              {activeSection === "admin" && isAdmin && (
+                <motion.div
+                  key="admin"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <AdminSection db={db} currentUser={currentUser} services={servicesData} />
+                </motion.div>
+              )}
+
             </AnimatePresence>
           </main>
 
           {/* Bottom navigation bar */}
-          <nav className="fixed bottom-0 left-0 right-0 max-w-3xl mx-auto bg-black border-t border-zinc-900 px-6 py-2.5 flex justify-around items-center z-40 shadow-2xl">
+          <nav className="fixed bottom-0 left-0 right-0 max-w-3xl mx-auto bg-bg-navy/95 border-t border-zinc-900 px-4 py-2.5 flex justify-around items-center z-40 shadow-[0_-10px_30px_rgba(4,8,16,0.8)] backdrop-blur-md">
             <button
               onClick={() => {
                 setSelectedPkg(null);
-                setPlayerUid("");
+                setFieldsState({});
                 setActiveSection("home");
               }}
               className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-                activeSection === "home" || activeSection === "topup" ? "text-red-500" : "text-zinc-600 hover:text-zinc-400"
+                activeSection === "home" || activeSection === "topup" ? "text-brand-orange" : "text-zinc-600 hover:text-white"
               }`}
             >
               <Home className="w-5 h-5" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Home</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider">Services</span>
             </button>
 
             <button
               onClick={() => setActiveSection("wallet")}
               className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-                activeSection === "wallet" ? "text-red-500" : "text-zinc-600 hover:text-zinc-400"
+                activeSection === "wallet" ? "text-brand-orange" : "text-zinc-600 hover:text-white"
               }`}
             >
               <Wallet className="w-5 h-5" />
@@ -1153,7 +1412,7 @@ export default function App() {
             <button
               onClick={() => setActiveSection("history")}
               className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-                activeSection === "history" ? "text-red-500" : "text-zinc-600 hover:text-zinc-400"
+                activeSection === "history" ? "text-brand-orange" : "text-zinc-600 hover:text-white"
               }`}
             >
               <HistoryIcon className="w-5 h-5" />
@@ -1166,17 +1425,31 @@ export default function App() {
                 setActiveSection("profile");
               }}
               className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-                activeSection === "profile" ? "text-red-500" : "text-zinc-600 hover:text-zinc-400"
+                activeSection === "profile" ? "text-brand-orange" : "text-zinc-600 hover:text-white"
               }`}
             >
               <UserIcon className="w-5 h-5" />
               <span className="text-[10px] font-bold uppercase tracking-wider">Profile</span>
             </button>
+
+            {/* Render Admin Tab if User email matches CEO / Admin privileges */}
+            {isAdmin && (
+              <button
+                onClick={() => setActiveSection("admin")}
+                className={`flex flex-col items-center gap-1 cursor-pointer transition-colors relative ${
+                  activeSection === "admin" ? "text-brand-blue" : "text-zinc-600 hover:text-brand-blue"
+                }`}
+              >
+                <ShieldCheck className="w-5 h-5 animate-pulse" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Admin</span>
+                <span className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full bg-brand-orange animate-ping"></span>
+              </button>
+            )}
           </nav>
         </div>
       )}
 
-      {/* 4. MODALS BACKDROP WRAPPERS */}
+      {/* MODALS BACKDROP WRAPPERS */}
       {/* Alert Insufficient Balance Modal */}
       <AnimatePresence>
         {alertModal.active && (
@@ -1185,16 +1458,16 @@ export default function App() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-xs bg-[#121212] border border-red-600 rounded-2xl p-6 text-center space-y-4 shadow-[0_0_30px_rgba(255,0,0,0.3)]"
+              className="w-full max-w-xs bg-card-bg border border-brand-orange rounded-3xl p-6 text-center space-y-4 shadow-[0_0_30px_rgba(243,91,4,0.25)]"
             >
-              <div className="text-red-500 flex justify-center">
-                <AlertTriangle className="w-12 h-12" />
+              <div className="text-brand-orange flex justify-center">
+                <AlertTriangle className="w-12 h-12 animate-bounce" />
               </div>
-              <h3 className="font-orbitron font-bold text-white text-lg tracking-wider">ALERT</h3>
-              <p className="text-zinc-300 text-sm leading-relaxed">{alertModal.message}</p>
+              <h3 className="font-orbitron font-extrabold text-white text-md tracking-widest">ALERT</h3>
+              <p className="text-zinc-300 text-xs font-mono leading-relaxed">{alertModal.message}</p>
               <button
                 onClick={goToWallet}
-                className="w-full bg-red-600 hover:bg-red-500 transition-all text-white font-bold py-2.5 rounded-lg text-sm tracking-wider cursor-pointer border border-red-500"
+                className="w-full bg-brand-orange hover:bg-brand-orange/95 transition-all text-white font-bold py-2.5 rounded-xl text-xs tracking-wider cursor-pointer font-orbitron"
               >
                 GO TO WALLET
               </button>
@@ -1211,30 +1484,30 @@ export default function App() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-xs bg-[#121212] border border-red-600 rounded-2xl p-6 space-y-4"
+              className="w-full max-w-xs bg-card-bg border border-brand-blue rounded-3xl p-6 space-y-4"
             >
-              <h3 className="font-orbitron font-bold text-white tracking-widest text-center text-md uppercase">
-                Update Name
+              <h3 className="font-orbitron font-extrabold text-white tracking-widest text-center text-xs uppercase">
+                Update Display Name
               </h3>
               <input
                 type="text"
                 value={newNameInput}
                 onChange={(e) => setNewNameInput(e.target.value)}
-                className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-4 py-3 rounded-lg focus:outline-none focus:border-red-600 transition-all text-sm font-semibold"
+                className="w-full bg-black/40 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-brand-blue transition-all text-xs font-bold font-sans"
               />
               <div className="flex gap-2">
                 <button
                   onClick={() => setNameModal(false)}
-                  className="flex-1 bg-[#222] hover:bg-zinc-800 text-zinc-400 font-bold py-2.5 rounded-lg text-xs tracking-wider cursor-pointer transition-colors"
+                  className="flex-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 font-bold py-2.5 rounded-xl text-[10px] tracking-wider cursor-pointer transition-colors uppercase font-mono"
                 >
-                  CANCEL
+                  Cancel
                 </button>
                 <button
                   onClick={saveNewName}
                   disabled={loading}
-                  className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-lg text-xs tracking-wider cursor-pointer transition-colors flex items-center justify-center gap-1"
+                  className="flex-1 bg-brand-blue hover:bg-brand-blue text-white font-bold py-2.5 rounded-xl text-[10px] tracking-wider cursor-pointer transition-colors flex items-center justify-center gap-1 uppercase font-mono"
                 >
-                  {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "SAVE"}
+                  {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save"}
                 </button>
               </div>
             </motion.div>
@@ -1250,37 +1523,37 @@ export default function App() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-sm bg-[#121212] border border-red-600 rounded-2xl p-6 space-y-4"
+              className="w-full max-w-sm bg-card-bg border border-brand-blue rounded-3xl p-6 space-y-4"
             >
-              <h3 className="font-orbitron font-bold text-white tracking-widest text-center text-md uppercase">
+              <h3 className="font-orbitron font-extrabold text-white tracking-widest text-center text-xs uppercase">
                 Change Password
               </h3>
 
-              <div className="space-y-3">
+              <div className="space-y-3 font-mono text-xs">
                 <input
                   type="password"
                   placeholder="Current Password"
                   value={oldPass}
                   onChange={(e) => setOldPass(e.target.value)}
-                  className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-4 py-2.5 rounded-lg focus:outline-none focus:border-red-600 transition-all text-sm"
+                  className="w-full bg-black/40 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue transition-all"
                 />
                 <input
                   type="password"
                   placeholder="New Password"
                   value={newPass}
                   onChange={(e) => setNewPass(e.target.value)}
-                  className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-4 py-2.5 rounded-lg focus:outline-none focus:border-red-600 transition-all text-sm"
+                  className="w-full bg-black/40 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue transition-all"
                 />
                 <input
                   type="password"
-                  placeholder="Confirm Password"
+                  placeholder="Confirm New Password"
                   value={confPass}
                   onChange={(e) => setConfPass(e.target.value)}
-                  className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-4 py-2.5 rounded-lg focus:outline-none focus:border-red-600 transition-all text-sm"
+                  className="w-full bg-black/40 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue transition-all"
                 />
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 font-mono text-[10px]">
                 <button
                   onClick={() => {
                     setOldPass("");
@@ -1288,16 +1561,16 @@ export default function App() {
                     setConfPass("");
                     setPassModal(false);
                   }}
-                  className="flex-1 bg-[#222] hover:bg-zinc-800 text-zinc-400 font-bold py-2.5 rounded-lg text-xs tracking-wider cursor-pointer transition-colors"
+                  className="flex-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 font-bold py-2.5 rounded-xl tracking-wider cursor-pointer transition-colors uppercase"
                 >
-                  CANCEL
+                  Cancel
                 </button>
                 <button
                   onClick={saveNewPass}
                   disabled={loading}
-                  className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-lg text-xs tracking-wider cursor-pointer transition-colors flex items-center justify-center gap-1"
+                  className="flex-1 bg-brand-blue hover:bg-brand-blue text-white font-bold py-2.5 rounded-xl tracking-wider cursor-pointer transition-colors flex items-center justify-center gap-1 uppercase"
                 >
-                  {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "UPDATE"}
+                  {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Update"}
                 </button>
               </div>
             </motion.div>

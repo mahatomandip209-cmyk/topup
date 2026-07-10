@@ -48,8 +48,8 @@ export interface ProfileSectionProps {
   handleLogout: () => void;
   copyToClipboard: (text: string, type: string) => void;
   copiedId: boolean;
-  setActiveSection: (sec: "home" | "wallet" | "history" | "profile" | "topup") => void;
-  openTopup: (game: "Free Fire" | "PUBG Mobile") => void;
+  setActiveSection: (sec: "home" | "wallet" | "history" | "profile" | "topup" | "admin") => void;
+  openTopup: (service: any) => void;
   activeTab: "menu" | "overview" | "favorites" | "notifications" | "support" | "refer" | "policies" | "settings";
   setActiveTab: (val: "menu" | "overview" | "favorites" | "notifications" | "support" | "refer" | "policies" | "settings") => void;
 }
