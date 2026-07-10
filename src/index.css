@@ -1,0 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Rajdhani", ui-sans-serif, system-ui, sans-serif;
+  --font-orbitron: "Orbitron", sans-serif;
+  --color-npx-red: #ff0000;
+  --color-dark-red: #8b0000;
+  --color-bg-black: #000000;
+  --color-card-bg: #121212;
+}
+
+/* Custom scrollbar and ambient glows */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+::-webkit-scrollbar-thumb {
+  background: #ff0000;
+  border-radius: 3px;
+}
+
+body {
+  background-color: #000000;
+  color: #ffffff;
+}
