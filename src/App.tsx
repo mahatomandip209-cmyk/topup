@@ -62,6 +62,7 @@ import {
 import { auth, db } from "./firebase";
 import { GamePackage, UserData } from "./types";
 import ProfileSection from "./components/ProfileSection";
+import HistorySection from "./components/HistorySection";
 
 export default function App() {
   // Splash & Initialization State
@@ -70,9 +71,12 @@ export default function App() {
   const [userData, setUserData] = useState<UserData & { avatarId?: string } | null>(null);
 
   // Active section configuration
-  const [activeSection, setActiveSection] = useState<"home" | "wallet" | "profile" | "topup">("home");
+  const [activeSection, setActiveSection] = useState<"home" | "wallet" | "history" | "profile" | "topup">("home");
 
   // Profile interactive states
+  const [profileActiveTab, setProfileActiveTab] = useState<
+    "overview" | "favorites" | "notifications" | "support" | "refer" | "policies"
+  >("overview");
   const [profileTab, setProfileTab] = useState<"stats" | "history" | "notifications" | "support" | "settings">("stats");
   const [profileSubView, setProfileSubView] = useState<string | null>(null);
   const [historySubTab, setHistorySubTab] = useState<"orders" | "deposits">("orders");
@@ -962,6 +966,29 @@ export default function App() {
                 </motion.div>
               )}
 
+              {/* HISTORY SECTION */}
+              {activeSection === "history" && (
+                <motion.div
+                  key="history"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <HistorySection
+                    userOrders={userOrders}
+                    userDeposits={userDeposits}
+                    historySubTab={historySubTab}
+                    setHistorySubTab={setHistorySubTab}
+                    copyToClipboard={copyToClipboard}
+                    setActiveSection={setActiveSection}
+                    setProfileActiveTab={setProfileActiveTab}
+                    setSupportTopic={setSupportTopic}
+                    setSupportMessage={setSupportMessage}
+                  />
+                </motion.div>
+              )}
+
               {/* PROFILE SECTION */}
               {activeSection === "profile" && (
                 <motion.div
@@ -974,8 +1001,6 @@ export default function App() {
                 >
                   <ProfileSection
                     userData={userData}
-                    userOrders={userOrders}
-                    userDeposits={userDeposits}
                     systemNotifications={systemNotifications}
                     userTickets={userTickets}
                     supportTopic={supportTopic}
@@ -991,8 +1016,8 @@ export default function App() {
                     copiedId={copiedId}
                     setActiveSection={setActiveSection}
                     openTopup={openTopup}
-                    historySubTab={historySubTab}
-                    setHistorySubTab={setHistorySubTab}
+                    activeTab={profileActiveTab}
+                    setActiveTab={setProfileActiveTab}
                   />
                 </motion.div>
               )}
@@ -1123,6 +1148,16 @@ export default function App() {
             >
               <Wallet className="w-5 h-5" />
               <span className="text-[10px] font-bold uppercase tracking-wider">Wallet</span>
+            </button>
+
+            <button
+              onClick={() => setActiveSection("history")}
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
+                activeSection === "history" ? "text-red-500" : "text-zinc-600 hover:text-zinc-400"
+              }`}
+            >
+              <HistoryIcon className="w-5 h-5" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">History</span>
             </button>
 
             <button
