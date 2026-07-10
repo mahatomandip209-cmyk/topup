@@ -1398,7 +1398,7 @@ export default function App() {
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <AdminSection db={db} currentUser={currentUser} services={dbServices.length > 0 ? dbServices : servicesData} />
+                  <AdminSection db={db} currentUser={currentUser} services={dbServices.length > 0 ? dbServices : servicesData} setActiveSection={setActiveSection} />
                 </motion.div>
               )}
 
@@ -1407,45 +1407,51 @@ export default function App() {
 
           {/* Bottom navigation bar */}
           <nav className="fixed bottom-0 left-0 right-0 max-w-3xl mx-auto bg-bg-navy/95 border-t border-zinc-900 px-4 py-2.5 flex justify-around items-center z-40 shadow-[0_-10px_30px_rgba(4,8,16,0.8)] backdrop-blur-md">
-            <button
-              onClick={() => {
-                setSelectedPkg(null);
-                setFieldsState({});
-                setActiveSection("home");
-              }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-300 ${
-                activeSection === "home" || activeSection === "topup" 
-                  ? "text-red-500 font-extrabold filter drop-shadow-[0_0_8px_rgba(239,68,68,0.85)] scale-105" 
-                  : "text-zinc-600 hover:text-white"
-              }`}
-            >
-              <Home className="w-5 h-5" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Services</span>
-            </button>
+            {activeSection !== "admin" && (
+              <button
+                onClick={() => {
+                  setSelectedPkg(null);
+                  setFieldsState({});
+                  setActiveSection("home");
+                }}
+                className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-300 ${
+                  activeSection === "home" || activeSection === "topup" 
+                    ? "text-red-500 font-extrabold filter drop-shadow-[0_0_8px_rgba(239,68,68,0.85)] scale-105" 
+                    : "text-zinc-600 hover:text-white"
+                }`}
+              >
+                <Home className="w-5 h-5" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Home</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveSection("wallet")}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-300 ${
-                activeSection === "wallet" 
-                  ? "text-red-500 font-extrabold filter drop-shadow-[0_0_8px_rgba(239,68,68,0.85)] scale-105" 
-                  : "text-zinc-600 hover:text-white"
-              }`}
-            >
-              <Wallet className="w-5 h-5" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Wallet</span>
-            </button>
+            {activeSection !== "admin" && (
+              <button
+                onClick={() => setActiveSection("wallet")}
+                className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-300 ${
+                  activeSection === "wallet" 
+                    ? "text-red-500 font-extrabold filter drop-shadow-[0_0_8px_rgba(239,68,68,0.85)] scale-105" 
+                    : "text-zinc-600 hover:text-white"
+                }`}
+              >
+                <Wallet className="w-5 h-5" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Wallet</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveSection("history")}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-300 ${
-                activeSection === "history" 
-                  ? "text-red-500 font-extrabold filter drop-shadow-[0_0_8px_rgba(239,68,68,0.85)] scale-105" 
-                  : "text-zinc-600 hover:text-white"
-              }`}
-            >
-              <HistoryIcon className="w-5 h-5" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">History</span>
-            </button>
+            {activeSection !== "admin" && (
+              <button
+                onClick={() => setActiveSection("history")}
+                className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-300 ${
+                  activeSection === "history" 
+                    ? "text-red-500 font-extrabold filter drop-shadow-[0_0_8px_rgba(239,68,68,0.85)] scale-105" 
+                    : "text-zinc-600 hover:text-white"
+                }`}
+              >
+                <HistoryIcon className="w-5 h-5" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">History</span>
+              </button>
+            )}
 
             <button
               onClick={() => {

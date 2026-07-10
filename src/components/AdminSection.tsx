@@ -38,9 +38,10 @@ interface AdminSectionProps {
   db: any;
   currentUser: any;
   services: ServiceItem[];
+  setActiveSection?: (section: string) => void;
 }
 
-export default function AdminSection({ db, currentUser, services }: AdminSectionProps) {
+export default function AdminSection({ db, currentUser, services, setActiveSection }: AdminSectionProps) {
   // Sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [adminTab, setAdminTab] = useState<"dashboard" | "games" | "products" | "qrcode" | "requirements" | "banners">("dashboard");
@@ -775,9 +776,20 @@ export default function AdminSection({ db, currentUser, services }: AdminSection
           </div>
         </div>
 
-        <span className="bg-red-500/10 border border-red-500/20 text-red-500 text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest font-mono">
-          {adminTab.toUpperCase()}
-        </span>
+        <div className="flex items-center gap-2">
+          {setActiveSection && (
+            <button
+              onClick={() => setActiveSection("home")}
+              className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 text-[10px] font-bold px-3 py-1.5 rounded-xl uppercase tracking-wider font-mono transition-all cursor-pointer flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.1)]"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              Exit Admin
+            </button>
+          )}
+          <span className="bg-red-500/10 border border-red-500/20 text-red-500 text-[9px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest font-mono">
+            {adminTab.toUpperCase()}
+          </span>
+        </div>
       </div>
 
       {/* SLIDING SIDEBAR (SIDE DRAWER) */}
@@ -850,6 +862,19 @@ export default function AdminSection({ db, currentUser, services }: AdminSection
                       </button>
                     );
                   })}
+
+                  {setActiveSection && (
+                    <button
+                      onClick={() => {
+                        setActiveSection("home");
+                        setIsSidebarOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-mono font-bold uppercase tracking-wider text-emerald-400 hover:text-white hover:bg-emerald-950/20 border border-emerald-900/30 hover:border-emerald-700/50 transition-all cursor-pointer mt-4"
+                    >
+                      <UserCheck className="w-4.5 h-4.5 flex-shrink-0" />
+                      <span>Switch to User View</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
