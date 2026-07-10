@@ -15,6 +15,7 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
   updatePassword,
+  signInAnonymously,
   User,
 } from "firebase/auth";
 import {
@@ -148,13 +149,17 @@ export default function App() {
 
   // Track Firebase Auth state
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      setAuthInitializing(false);
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUser(user);
+        setAuthInitializing(false);
       } else {
-        setCurrentUser(null);
-        setUserData(null);
+        try {
+          await signInAnonymously(auth);
+        } catch (err: any) {
+          console.error("Anonymous authentication failed:", err);
+          setAuthInitializing(false);
+        }
       }
     });
     return () => unsubscribeAuth();
@@ -173,6 +178,16 @@ export default function App() {
           return;
         }
         setUserData(data);
+      } else {
+        const uniqueId = "BNY-" + Math.floor(10000 + Math.random() * 90000);
+        set(userRef, {
+          name: "Guest Gamer",
+          email: currentUser.email || "guest@bnytopup.com",
+          uniqueId: uniqueId,
+          balance: 0,
+          blocked: false,
+          avatarId: "vanguard"
+        }).catch((err) => console.error("Error initializing user data:", err));
       }
     });
 
@@ -224,7 +239,7 @@ export default function App() {
         setSystemNotifications([
           {
             id: "default-1",
-            title: "🔥 Welcome to NPX TOPUP!",
+            title: "🔥 Welcome to BNY TOPUP!",
             body: "Get instant diamonds and UC directly credited. Live support is available 24/7.",
             timestamp: Date.now() - 3600000 * 2,
             type: "info"
@@ -336,7 +351,7 @@ export default function App() {
     setLoading(true);
     try {
       const res = await createUserWithEmailAndPassword(auth, regEmail, regPass);
-      const uniqueId = "NPX-" + Math.floor(10000 + Math.random() * 90000);
+      const uniqueId = "BNY-" + Math.floor(10000 + Math.random() * 90000);
       await set(ref(db, `users/${res.user.uid}`), {
         name: regName,
         email: regEmail,
@@ -485,7 +500,7 @@ export default function App() {
         timestamp: Date.now(),
       });
 
-      const msg = `🛒 *NPX NEW ORDER* 🚀\n\n📦 *Purchased Package:* ${selectedPkg.n}\n💰 *Package Price:* RS ${selectedPkg.p}\n👤 *User Full Name:* ${userData.name}\n📧 *User Email Address:* ${currentUser.email}\n🆔 *User Unique ID:* ${userData.uniqueId}\n🎮 *Selected Game:* ${activeGame}\n🆔 *Player Game UID:* ${playerUid}`;
+      const msg = `🛒 *BNY TOPUP NEW ORDER* 🚀\n\n📦 *Purchased Package:* ${selectedPkg.n}\n💰 *Package Price:* RS ${selectedPkg.p}\n👤 *User Full Name:* ${userData.name}\n📧 *User Email Address:* ${currentUser.email}\n🆔 *User Unique ID:* ${userData.uniqueId}\n🎮 *Selected Game:* ${activeGame}\n🆔 *Player Game UID:* ${playerUid}`;
       
       const whatsappUrl = `https://wa.me/9779825880400?text=${encodeURIComponent(msg)}`;
       window.open(whatsappUrl, "_blank");
@@ -527,7 +542,7 @@ export default function App() {
         timestamp: Date.now(),
       });
 
-      const msg = `🚀 *NPX DEPOSIT REQUEST* 🚀\n\n🆔 *User Unique ID:* ${userData.uniqueId}\n👤 *User Full Name:* ${userData.name}\n📧 *User Email Address:* ${currentUser.email}\n💰 *Deposit Amount:* RS ${walletAmt}\n📞 *Sender Esewa Number:* ${esewaNum}\n📝 *Sender Esewa Name:* ${esewaName}\n🔢 *Transaction Code:* ${esewaTrx}`;
+      const msg = `🚀 *BNY TOPUP DEPOSIT REQUEST* 🚀\n\n🆔 *User Unique ID:* ${userData.uniqueId}\n👤 *User Full Name:* ${userData.name}\n📧 *User Email Address:* ${currentUser.email}\n💰 *Deposit Amount:* RS ${walletAmt}\n📞 *Sender Esewa Number:* ${esewaNum}\n📝 *Sender Esewa Name:* ${esewaName}\n🔢 *Transaction Code:* ${esewaTrx}`;
       
       const whatsappUrl = `https://wa.me/9779825880400?text=${encodeURIComponent(msg)}`;
       window.open(whatsappUrl, "_blank");
@@ -571,7 +586,7 @@ export default function App() {
             <div className="relative">
               <div className="w-16 h-16 rounded-full border-4 border-zinc-900 border-t-red-600 animate-spin"></div>
               <div className="absolute inset-0 flex items-center justify-center text-xs font-mono font-bold tracking-widest text-red-500">
-                NPX
+                BNY
               </div>
             </div>
             <div className="font-orbitron text-xl font-bold tracking-widest text-red-600 glow-red">
@@ -591,7 +606,7 @@ export default function App() {
             className="font-orbitron text-4xl font-black text-red-600 mb-8 tracking-widest text-center"
             style={{ textShadow: "0 0 15px rgba(255, 0, 0, 0.7)" }}
           >
-            NPX TOPUP
+            BNY TOPUP
           </motion.div>
 
           <motion.div
@@ -615,7 +630,7 @@ export default function App() {
                       type="email"
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      placeholder="e.g. member@npx.com"
+                      placeholder="e.g. member@bnytopup.com"
                       className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-10 py-3 rounded-lg focus:outline-none focus:border-red-600 transition-all font-mono text-sm"
                       required
                     />
@@ -666,7 +681,7 @@ export default function App() {
               <form onSubmit={handleRegister} className="space-y-5">
                 <div className="text-center mb-4">
                   <h2 className="text-xl font-orbitron font-bold tracking-wide">CREATE ACCOUNT</h2>
-                  <p className="text-zinc-500 text-xs mt-1">Join NPX and unlock instant game credits</p>
+                  <p className="text-zinc-500 text-xs mt-1">Join BNY TOPUP and unlock instant game credits</p>
                 </div>
 
                 <div className="space-y-2">
@@ -689,7 +704,7 @@ export default function App() {
                       type="email"
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
-                      placeholder="e.g. member@npx.com"
+                      placeholder="e.g. member@bnytopup.com"
                       className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-10 py-3 rounded-lg focus:outline-none focus:border-red-600 transition-all font-mono text-sm"
                       required
                     />
@@ -747,7 +762,7 @@ export default function App() {
           {/* Header Bar */}
           <header className="sticky top-0 bg-black/90 backdrop-blur-md px-4 py-4 flex justify-between items-center border-b-2 border-red-900 z-50">
             <div className="font-orbitron text-2xl font-black text-red-600 tracking-widest glow-red">
-              NPX
+              BNY TOPUP
             </div>
             <div className="flex items-center gap-2 border border-red-600 bg-red-950/20 px-3 py-1.5 rounded-md shadow-[inset_0_0_10px_rgba(255,0,0,0.15)]">
               <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">Balance:</span>
@@ -1329,7 +1344,7 @@ export default function App() {
                           className="space-y-4"
                         >
                           <div className="border-b border-zinc-900 pb-2">
-                            <h4 className="font-orbitron font-bold text-red-500 text-xs uppercase tracking-widest">NPX OFFICIAL NOTICES</h4>
+                            <h4 className="font-orbitron font-bold text-red-500 text-xs uppercase tracking-widest">BNY OFFICIAL NOTICES</h4>
                             <p className="text-[10px] text-zinc-500 mt-0.5">Stay up to date with core server changes</p>
                           </div>
 

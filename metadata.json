@@ -1,6 +1,6 @@
 {
-  "name": "NPX Topup",
-  "description": "NPX Topup is a premium, high-speed game credit and membership top-up platform featuring instant secure verification.",
+  "name": "BNY TOPUP",
+  "description": "BNY TOPUP is a premium, high-speed game credit and membership top-up platform featuring instant secure verification.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
