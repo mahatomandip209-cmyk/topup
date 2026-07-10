@@ -56,7 +56,6 @@ import { GamePackage, UserData } from "./types";
 
 export default function App() {
   // Splash & Initialization State
-  const [splashVisible, setSplashVisible] = useState(true);
   const [authInitializing, setAuthInitializing] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserData & { avatarId?: string } | null>(null);
@@ -139,28 +138,16 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Force hide splash overlay after 2 seconds
-  useEffect(() => {
-    const splashTimer = setTimeout(() => {
-      setSplashVisible(false);
-    }, 2000);
-    return () => clearTimeout(splashTimer);
-  }, []);
-
   // Track Firebase Auth state
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
-        setAuthInitializing(false);
       } else {
-        try {
-          await signInAnonymously(auth);
-        } catch (err: any) {
-          console.error("Anonymous authentication failed:", err);
-          setAuthInitializing(false);
-        }
+        setCurrentUser(null);
+        setUserData(null);
       }
+      setAuthInitializing(false);
     });
     return () => unsubscribeAuth();
   }, []);
@@ -574,27 +561,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-black text-white font-sans flex flex-col antialiased selection:bg-red-600 selection:text-white">
       {/* 1. SPLASH LOADER */}
-      <AnimatePresence>
-        {(splashVisible || authInitializing) && (
-          <motion.div
-            id="splash"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="fixed inset-0 bg-black z-[9999] flex flex-col justify-center items-center gap-6"
-          >
-            <div className="relative">
-              <div className="w-16 h-16 rounded-full border-4 border-zinc-900 border-t-red-600 animate-spin"></div>
-              <div className="absolute inset-0 flex items-center justify-center text-xs font-mono font-bold tracking-widest text-red-500">
-                BNY
-              </div>
-            </div>
-            <div className="font-orbitron text-xl font-bold tracking-widest text-red-600 glow-red">
-              LOADING SYSTEM...
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* 2. AUTHENTICATION MODULE */}
       {!currentUser && !authInitializing && (
@@ -618,8 +584,7 @@ export default function App() {
             {authView === "login" ? (
               <form onSubmit={handleLogin} className="space-y-6">
                 <div className="text-center mb-4">
-                  <h2 className="text-xl font-orbitron font-bold tracking-wide">SECURE ACCESS</h2>
-                  <p className="text-zinc-500 text-xs mt-1">Please login to authorize top-ups</p>
+                  <h2 className="text-xl font-orbitron font-bold tracking-wide">LOGIN</h2>
                 </div>
 
                 <div className="space-y-2">
@@ -630,7 +595,7 @@ export default function App() {
                       type="email"
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      placeholder="e.g. member@bnytopup.com"
+                      placeholder="Enter your email"
                       className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-10 py-3 rounded-lg focus:outline-none focus:border-red-600 transition-all font-mono text-sm"
                       required
                     />
@@ -690,7 +655,7 @@ export default function App() {
                     type="text"
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
-                    placeholder="e.g. John Doe"
+                    placeholder="Enter your full name"
                     className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-4 py-3 rounded-lg focus:outline-none focus:border-red-600 transition-all text-sm"
                     required
                   />
@@ -704,7 +669,7 @@ export default function App() {
                       type="email"
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
-                      placeholder="e.g. member@bnytopup.com"
+                      placeholder="Enter your email"
                       className="w-full bg-[#0a0a0a] border border-zinc-800 text-white placeholder-zinc-700 px-10 py-3 rounded-lg focus:outline-none focus:border-red-600 transition-all font-mono text-sm"
                       required
                     />
