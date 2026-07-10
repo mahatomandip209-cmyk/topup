@@ -26,6 +26,14 @@ import {
   Key,
   Pencil,
   ChevronLeft,
+  ChevronRight,
+  Coins,
+  ShoppingCart,
+  Heart,
+  Gift,
+  FileText,
+  RotateCcw,
+  MessageSquare,
   AlertTriangle,
   Loader2,
   Smartphone,
@@ -53,6 +61,7 @@ import {
 } from "lucide-react";
 import { auth, db } from "./firebase";
 import { GamePackage, UserData } from "./types";
+import ProfileSection from "./components/ProfileSection";
 
 export default function App() {
   // Splash & Initialization State
@@ -65,6 +74,7 @@ export default function App() {
 
   // Profile interactive states
   const [profileTab, setProfileTab] = useState<"stats" | "history" | "notifications" | "support" | "settings">("stats");
+  const [profileSubView, setProfileSubView] = useState<string | null>(null);
   const [historySubTab, setHistorySubTab] = useState<"orders" | "deposits">("orders");
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [userDeposits, setUserDeposits] = useState<any[]>([]);
@@ -797,14 +807,13 @@ export default function App() {
                       onClick={() => openTopup("Free Fire")}
                       className="group bg-[#121212] rounded-2xl overflow-hidden border border-zinc-900 hover:border-red-600 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-[0_0_20px_rgba(255,0,0,0.1)] active:scale-95"
                     >
-                      <div className="relative aspect-[4/3] overflow-hidden">
+                      <div className="relative aspect-[4/3] overflow-hidden bg-black flex items-center justify-center p-2 border-b border-zinc-900/50">
                         <img
                           src="https://i.ibb.co/My1kJfTy/IMG-20260302-211532.jpg"
                           alt="Free Fire"
                           referrerPolicy="no-referrer"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500"
+                          className="w-full h-full object-contain group-hover:scale-105 transition-all duration-500"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                       </div>
                       <div className="p-3 text-center">
                         <p className="font-bold tracking-wider text-sm group-hover:text-red-500 transition-colors">Free Fire</p>
@@ -816,14 +825,13 @@ export default function App() {
                       onClick={() => openTopup("PUBG Mobile")}
                       className="group bg-[#121212] rounded-2xl overflow-hidden border border-zinc-900 hover:border-red-600 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-[0_0_20px_rgba(255,0,0,0.1)] active:scale-95"
                     >
-                      <div className="relative aspect-[4/3] overflow-hidden">
+                      <div className="relative aspect-[4/3] overflow-hidden bg-black flex items-center justify-center p-2 border-b border-zinc-900/50">
                         <img
                           src="https://i.ibb.co/jPZjCShd/IMG-20260302-211625.jpg"
                           alt="PUBG Mobile"
                           referrerPolicy="no-referrer"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500"
+                          className="w-full h-full object-contain group-hover:scale-105 transition-all duration-500"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                       </div>
                       <div className="p-3 text-center">
                         <p className="font-bold tracking-wider text-sm group-hover:text-red-500 transition-colors">PUBG Mobile</p>
@@ -964,529 +972,28 @@ export default function App() {
                   transition={{ duration: 0.3 }}
                   className="space-y-6"
                 >
-                  {/* Gamer Header Banner Card */}
-                  <div className="bg-gradient-to-b from-[#121212] to-[#0a0a0a] rounded-2xl border border-zinc-900 p-6 flex flex-col md:flex-row items-center gap-5 relative overflow-hidden shadow-md">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-red-600/5 rounded-full blur-3xl"></div>
-
-                    {/* Avatar Selection Panel */}
-                    <div className="relative group flex-shrink-0">
-                      {(() => {
-                        const activeAv = avatars.find(a => a.id === userData?.avatarId) || avatars[0];
-                        return (
-                          <div className={`w-18 h-18 rounded-full bg-gradient-to-br ${activeAv.bg} border-2 border-red-600 flex items-center justify-center text-white relative shadow-[0_0_15px_rgba(255,0,0,0.3)] transition-transform duration-300 hover:scale-105`}>
-                            <UserIcon className="w-9 h-9 text-white" />
-                            {/* edit action badge */}
-                            <button
-                              onClick={() => setAvatarMenuOpen(!avatarMenuOpen)}
-                              className="absolute -bottom-1 -right-1 bg-red-600 hover:bg-red-500 text-white rounded-full p-1.5 border border-black cursor-pointer transition-colors"
-                              title="Change Avatar"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    <div className="text-center md:text-left space-y-1.5 min-w-0 flex-1">
-                      <div className="flex flex-col md:flex-row md:items-center gap-1.5 md:gap-3">
-                        <h1 className="text-2xl font-orbitron font-extrabold text-white tracking-wide truncate">
-                          {userData?.name ?? "..."}
-                        </h1>
-                        <div className="inline-flex items-center justify-center gap-1 bg-red-950/40 text-red-500 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border border-red-900/40 w-fit mx-auto md:mx-0">
-                          <ShieldCheck className="w-3 h-3" /> VERIFIED
-                        </div>
-                      </div>
-
-                      <p className="text-zinc-500 font-mono text-xs truncate">{userData?.email ?? "..."}</p>
-                    </div>
-                  </div>
-
-                  {/* Dropdown Avatar presets selector */}
-                  {avatarMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-[#121212] border border-red-950 p-4 rounded-xl grid grid-cols-3 gap-2.5 shadow-[0_0_30px_rgba(0,0,0,0.5)]"
-                    >
-                      <h4 className="col-span-3 text-xs font-orbitron font-bold text-red-500 uppercase tracking-widest border-b border-zinc-900 pb-2 mb-1">
-                        SELECT GAMER AVATAR
-                      </h4>
-                      {avatars.map((av) => (
-                        <div
-                          key={av.id}
-                          onClick={() => selectAvatar(av.id)}
-                          className={`p-2.5 rounded-xl text-center cursor-pointer border transition-all ${
-                            userData?.avatarId === av.id
-                              ? "bg-red-950/30 border-red-600 shadow-[0_0_10px_rgba(255,0,0,0.15)]"
-                              : "bg-black border-zinc-900 hover:border-zinc-800"
-                          }`}
-                        >
-                          <div className={`w-11 h-11 mx-auto rounded-full bg-gradient-to-br ${av.bg} flex items-center justify-center mb-2 shadow-inner`}>
-                            <UserIcon className="w-5 h-5 text-white" />
-                          </div>
-                          <p className="text-[10px] text-zinc-400 font-bold truncate">{av.name}</p>
-                        </div>
-                      ))}
-                    </motion.div>
-                  )}
-
-                  {/* Profile Bento Stats Grid */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-[#121212] border border-zinc-900 rounded-xl p-3.5 text-center space-y-1.5 hover:border-red-600/40 transition-all duration-300">
-                      <div className="flex justify-center text-red-500">
-                        <DollarSign className="w-5 h-5" />
-                      </div>
-                      <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">Balance</p>
-                      <p className="font-orbitron font-bold text-xs text-white truncate">RS {userData?.balance ?? 0}</p>
-                    </div>
-                    <div className="bg-[#121212] border border-zinc-900 rounded-xl p-3.5 text-center space-y-1.5 hover:border-red-600/40 transition-all duration-300">
-                      <div className="flex justify-center text-red-500">
-                        <Gamepad2 className="w-5 h-5" />
-                      </div>
-                      <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">Topups</p>
-                      <p className="font-orbitron font-bold text-xs text-white truncate">{userOrders.length} Packs</p>
-                    </div>
-                    <div className="bg-[#121212] border border-zinc-900 rounded-xl p-3.5 text-center space-y-1.5 hover:border-red-600/40 transition-all duration-300">
-                      <div className="flex justify-center text-red-500">
-                        <Activity className="w-5 h-5" />
-                      </div>
-                      <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">Deposits</p>
-                      <p className="font-orbitron font-bold text-xs text-white truncate">{userDeposits.length} Trx</p>
-                    </div>
-                  </div>
-
-                  {/* Profile Section Navigation Tabs */}
-                  <div className="flex border-b border-zinc-950 bg-zinc-950/60 p-1 rounded-xl gap-1 overflow-x-auto no-scrollbar border border-zinc-900">
-                    {[
-                      { id: "stats", label: "Overview", icon: UserIcon },
-                      { id: "history", label: "History", icon: HistoryIcon },
-                      { id: "notifications", label: "Notices", icon: Bell, badge: systemNotifications.length },
-                      { id: "support", label: "Support", icon: HelpCircle, badge: userTickets.filter(t => t.status === "open").length },
-                      { id: "settings", label: "Security", icon: Settings },
-                    ].map((tab) => {
-                      const Icon = tab.icon;
-                      const isActive = profileTab === tab.id;
-                      return (
-                        <button
-                          key={tab.id}
-                          onClick={() => setProfileTab(tab.id as any)}
-                          className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap flex-1 justify-center ${
-                            isActive
-                              ? "bg-red-950/20 text-red-500 border border-red-800/80 shadow-[0_0_10px_rgba(255,0,0,0.1)]"
-                              : "text-zinc-500 hover:text-zinc-400 hover:bg-zinc-900/30"
-                          }`}
-                        >
-                          <Icon className="w-3.5 h-3.5" />
-                          <span className="hidden xs:inline">{tab.label}</span>
-                          {tab.badge ? (
-                            <span className="bg-red-600 text-white font-mono text-[9px] px-1 rounded-full animate-pulse ml-0.5">
-                              {tab.badge}
-                            </span>
-                          ) : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Interactive Dynamic Tabs Contents */}
-                  <div className="bg-[#0c0c0c] border border-zinc-900/50 rounded-2xl p-4 md:p-6 shadow-inner min-h-[220px]">
-                    <AnimatePresence mode="wait">
-                      {/* 1. OVERVIEW TAB */}
-                      {profileTab === "stats" && (
-                        <motion.div
-                          key="tab-overview"
-                          initial={{ opacity: 0, y: 5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -5 }}
-                          className="space-y-4"
-                        >
-                          <div className="bg-[#121212] border border-zinc-900 p-5 rounded-xl space-y-4 shadow-sm relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-red-600/5 rounded-full blur-2xl"></div>
-
-                            <div className="flex justify-between items-center border-b border-zinc-900/80 pb-3">
-                              <div>
-                                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-0.5">Secure Info Card</span>
-                                <h4 className="font-orbitron font-bold text-white tracking-wide text-xs">AUTHORIZED PLAYER ACCESS</h4>
-                              </div>
-                              <div className="flex items-center gap-1 bg-red-950/30 text-red-500 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-red-900/40">
-                                <ShieldCheck className="w-3.5 h-3.5 animate-pulse" /> ACTIVE
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 text-xs font-mono">
-                              <div className="space-y-1">
-                                <span className="text-[10px] text-zinc-500 font-semibold block uppercase">Display Name</span>
-                                <span className="text-white font-bold tracking-wide">{userData?.name}</span>
-                              </div>
-                              <div className="space-y-1">
-                                <span className="text-[10px] text-zinc-500 font-semibold block uppercase">Email Contact</span>
-                                <span className="text-white truncate block">{userData?.email}</span>
-                              </div>
-                              <div className="space-y-1">
-                                <span className="text-[10px] text-zinc-500 font-semibold block uppercase">Member Level</span>
-                                <span className="text-red-500 font-bold tracking-wider flex items-center gap-1">
-                                  <Flame className="w-3.5 h-3.5 animate-pulse" />
-                                  PLATINUM ELITE
-                                </span>
-                              </div>
-                              <div className="space-y-1">
-                                <span className="text-[10px] text-zinc-500 font-semibold block uppercase">Registration Status</span>
-                                <span className="text-emerald-500 font-bold tracking-wider">SECURE LIVE</span>
-                              </div>
-                            </div>
-
-                            <div className="bg-[#0a0a0a] border border-zinc-900 rounded-lg p-3 flex justify-between items-center text-xs font-mono">
-                              <div className="space-y-1">
-                                <span className="text-[10px] text-zinc-500 font-semibold block uppercase">Unique Player ID</span>
-                                <span className="text-red-500 font-bold tracking-wider">{userData?.uniqueId}</span>
-                              </div>
-                              <button
-                                onClick={() => copyToClipboard(userData?.uniqueId || "", "id")}
-                                className="bg-red-950/20 hover:bg-red-900/30 p-2 rounded-md text-red-500 cursor-pointer transition-colors border border-red-900/30"
-                                title="Copy Unique ID"
-                              >
-                                {copiedId ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* 2. HISTORIES TAB */}
-                      {profileTab === "history" && (
-                        <motion.div
-                          key="tab-histories"
-                          initial={{ opacity: 0, y: 5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -5 }}
-                          className="space-y-4"
-                        >
-                          <div className="flex gap-2 border-b border-zinc-900 pb-2">
-                            <button
-                              onClick={() => setHistorySubTab("orders")}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                                historySubTab === "orders"
-                                  ? "bg-red-600 text-white shadow-[0_0_10px_rgba(255,0,0,0.2)]"
-                                  : "text-zinc-500 hover:text-zinc-400 bg-zinc-950/50 border border-zinc-900"
-                              }`}
-                            >
-                              🎮 Topup Orders ({userOrders.length})
-                            </button>
-                            <button
-                              onClick={() => setHistorySubTab("deposits")}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                                historySubTab === "deposits"
-                                  ? "bg-red-600 text-white shadow-[0_0_10px_rgba(255,0,0,0.2)]"
-                                  : "text-zinc-500 hover:text-zinc-400 bg-zinc-950/50 border border-zinc-900"
-                              }`}
-                            >
-                              💳 Wallet Deposits ({userDeposits.length})
-                            </button>
-                          </div>
-
-                          {historySubTab === "orders" ? (
-                            <div className="space-y-3.5 max-h-[350px] overflow-y-auto pr-1 no-scrollbar">
-                              {userOrders.length === 0 ? (
-                                <div className="text-center py-10 bg-[#121212]/50 rounded-xl border border-zinc-900 space-y-2">
-                                  <Gamepad2 className="w-8 h-8 text-zinc-800 mx-auto" />
-                                  <p className="text-zinc-500 text-xs">No game top-up orders found.</p>
-                                  <button
-                                    onClick={() => setActiveSection("home")}
-                                    className="text-red-500 hover:underline font-bold text-xs uppercase cursor-pointer"
-                                  >
-                                    Order Instant Credits
-                                  </button>
-                                </div>
-                              ) : (
-                                userOrders.map((order) => (
-                                  <div
-                                    key={order.id}
-                                    className="bg-[#121212]/50 border border-zinc-900 p-4 rounded-xl flex justify-between items-center gap-4 text-xs hover:border-red-900/40 transition-colors"
-                                  >
-                                    <div className="space-y-1.5 min-w-0 flex-1">
-                                      <div className="flex items-center gap-2">
-                                        <span className="bg-red-950/40 text-red-500 font-bold px-2 py-0.5 rounded text-[9px] tracking-wide border border-red-900/40">
-                                          {order.game}
-                                        </span>
-                                        <span className="text-white font-bold">{order.packageName}</span>
-                                      </div>
-                                      <div className="font-mono text-zinc-400 space-y-0.5 text-[11px]">
-                                        <p className="truncate"><span className="text-zinc-600">Player UID:</span> {order.playerUid}</p>
-                                        <p className="text-[10px] text-zinc-600">
-                                          {new Date(order.timestamp).toLocaleString()}
-                                        </p>
-                                      </div>
-                                    </div>
-
-                                    <div className="text-right space-y-1.5 flex-shrink-0">
-                                      <p className="font-mono font-bold text-white text-sm">RS {order.price}</p>
-                                      {order.status === "approved" ? (
-                                        <span className="flex items-center gap-1 justify-end text-emerald-500 text-[10px] font-bold uppercase tracking-wider">
-                                          <CheckCircle2 className="w-3.5 h-3.5" /> DELIVERED
-                                        </span>
-                                      ) : order.status === "rejected" ? (
-                                        <span className="flex items-center gap-1 justify-end text-red-500 text-[10px] font-bold uppercase tracking-wider">
-                                          <XCircle className="w-3.5 h-3.5" /> REJECTED
-                                        </span>
-                                      ) : (
-                                        <span className="flex items-center gap-1 justify-end text-amber-500 text-[10px] font-bold uppercase tracking-wider animate-pulse">
-                                          <Clock className="w-3.5 h-3.5 animate-spin" /> PENDING
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          ) : (
-                            <div className="space-y-3.5 max-h-[350px] overflow-y-auto pr-1 no-scrollbar">
-                              {userDeposits.length === 0 ? (
-                                <div className="text-center py-10 bg-[#121212]/50 rounded-xl border border-zinc-900 space-y-2">
-                                  <Wallet className="w-8 h-8 text-zinc-800 mx-auto" />
-                                  <p className="text-zinc-500 text-xs">No deposit logs registered.</p>
-                                  <button
-                                    onClick={() => setActiveSection("wallet")}
-                                    className="text-red-500 hover:underline font-bold text-xs uppercase cursor-pointer"
-                                  >
-                                    Submit deposit proof
-                                  </button>
-                                </div>
-                              ) : (
-                                userDeposits.map((dep) => (
-                                  <div
-                                    key={dep.id}
-                                    className="bg-[#121212]/50 border border-zinc-900 p-4 rounded-xl flex justify-between items-center gap-4 text-xs hover:border-emerald-900/40 transition-colors"
-                                  >
-                                    <div className="space-y-1.5 min-w-0 flex-1">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="bg-emerald-950/40 text-emerald-500 font-bold px-2 py-0.5 rounded text-[9px] tracking-wide border border-emerald-900/40">
-                                          ESEWA
-                                        </span>
-                                        <span className="text-zinc-500 font-mono text-[10px] truncate">
-                                          ID: {dep.trx}
-                                        </span>
-                                      </div>
-                                      <div className="font-mono text-zinc-400 space-y-0.5 text-[11px]">
-                                        <p className="truncate"><span className="text-zinc-600">Sender:</span> {dep.senderName}</p>
-                                        <p className="text-[10px] text-zinc-600">
-                                          {new Date(dep.timestamp).toLocaleString()}
-                                        </p>
-                                      </div>
-                                    </div>
-
-                                    <div className="text-right space-y-1.5 flex-shrink-0">
-                                      <p className="font-mono font-bold text-emerald-500 text-sm">RS {dep.amount}</p>
-                                      {dep.status === "approved" ? (
-                                        <span className="flex items-center gap-1 justify-end text-emerald-500 text-[10px] font-bold uppercase tracking-wider">
-                                          <CheckCircle2 className="w-3.5 h-3.5" /> APPROVED
-                                        </span>
-                                      ) : dep.status === "rejected" ? (
-                                        <span className="flex items-center gap-1 justify-end text-red-500 text-[10px] font-bold uppercase tracking-wider">
-                                          <XCircle className="w-3.5 h-3.5" /> REJECTED
-                                        </span>
-                                      ) : (
-                                        <span className="flex items-center gap-1 justify-end text-amber-500 text-[10px] font-bold uppercase tracking-wider animate-pulse">
-                                          <Clock className="w-3.5 h-3.5" /> VERIFYING
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          )}
-                        </motion.div>
-                      )}
-
-                      {/* 3. NOTICES TAB */}
-                      {profileTab === "notifications" && (
-                        <motion.div
-                          key="tab-notices"
-                          initial={{ opacity: 0, y: 5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -5 }}
-                          className="space-y-4"
-                        >
-                          <div className="border-b border-zinc-900 pb-2">
-                            <h4 className="font-orbitron font-bold text-red-500 text-xs uppercase tracking-widest">BNY OFFICIAL NOTICES</h4>
-                            <p className="text-[10px] text-zinc-500 mt-0.5">Stay up to date with core server changes</p>
-                          </div>
-
-                          <div className="space-y-3.5 max-h-[350px] overflow-y-auto pr-1 no-scrollbar">
-                            {systemNotifications.map((notif) => (
-                              <div
-                                key={notif.id}
-                                className="bg-[#121212]/60 border border-zinc-900 hover:border-zinc-800 p-4 rounded-xl space-y-2.5 transition-all relative overflow-hidden"
-                              >
-                                {notif.type === "warning" && <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>}
-                                {notif.type === "news" && <div className="absolute top-0 left-0 w-1 h-full bg-red-600"></div>}
-                                {notif.type === "info" && <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500"></div>}
-
-                                <div className="flex justify-between items-start gap-4">
-                                  <h5 className="font-bold text-white text-xs tracking-wide flex items-center gap-1.5">
-                                    <span className="w-1.5 h-1.5 bg-red-600 rounded-full animate-ping"></span>
-                                    {notif.title}
-                                  </h5>
-                                  <span className="text-[9px] font-mono text-zinc-500 flex-shrink-0">
-                                    {new Date(notif.timestamp).toLocaleDateString()}
-                                  </span>
-                                </div>
-                                <p className="text-zinc-400 text-[11px] leading-relaxed font-mono">{notif.body}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* 4. SUPPORT TAB */}
-                      {profileTab === "support" && (
-                        <motion.div
-                          key="tab-support"
-                          initial={{ opacity: 0, y: 5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -5 }}
-                          className="space-y-5"
-                        >
-                          <form onSubmit={submitSupportTicket} className="bg-[#121212]/75 border border-zinc-900 p-4 rounded-xl space-y-3.5">
-                            <div>
-                              <h4 className="font-orbitron font-bold text-red-500 text-xs uppercase tracking-widest border-b border-zinc-900 pb-2">
-                                CREATE SUPPORT TICKET
-                              </h4>
-                              <p className="text-[10px] text-zinc-500 mt-1">Submit dynamic claims to verification team</p>
-                            </div>
-
-                            <div className="space-y-3 text-xs">
-                              <div>
-                                <label className="text-[10px] text-zinc-400 block mb-1 uppercase tracking-wider">Inquiry Subject</label>
-                                <input
-                                  type="text"
-                                  placeholder="e.g. UC package not received"
-                                  value={supportTopic}
-                                  onChange={(e) => setSupportTopic(e.target.value)}
-                                  className="w-full bg-black border border-zinc-850 text-white placeholder-zinc-700 px-3.5 py-2.5 rounded-lg focus:outline-none focus:border-red-600 transition-all font-mono text-xs"
-                                  required
-                                />
-                              </div>
-
-                              <div>
-                                <label className="text-[10px] text-zinc-400 block mb-1 uppercase tracking-wider">Detailed Message</label>
-                                <textarea
-                                  placeholder="Provide exact details such as transaction ID, UID number, etc."
-                                  value={supportMessage}
-                                  rows={3}
-                                  onChange={(e) => setSupportMessage(e.target.value)}
-                                  className="w-full bg-black border border-zinc-850 text-white placeholder-zinc-700 px-3.5 py-2.5 rounded-lg focus:outline-none focus:border-red-600 transition-all text-xs leading-relaxed"
-                                  required
-                                />
-                              </div>
-
-                              <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full bg-red-600 hover:bg-red-500 transition-all text-white font-bold py-2.5 rounded-lg text-xs tracking-wider cursor-pointer border border-red-500 flex items-center justify-center gap-1.5"
-                              >
-                                {loading ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Send className="w-3.5 h-3.5" />
-                                    SUBMIT HELP TICKET
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          </form>
-
-                          {/* Previous tickets */}
-                          <div className="space-y-3">
-                            <h4 className="font-orbitron font-bold text-zinc-500 text-[10px] uppercase tracking-widest">TICKET HISTORY ({userTickets.length})</h4>
-                            <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1 no-scrollbar">
-                              {userTickets.length === 0 ? (
-                                <p className="text-zinc-600 text-[11px] italic text-center py-4 bg-[#121212]/30 rounded-xl border border-zinc-900">
-                                  No previous support logs recorded.
-                                </p>
-                              ) : (
-                                userTickets.map((ticket) => (
-                                  <div
-                                    key={ticket.id}
-                                    className="bg-[#121212]/50 border border-zinc-900 p-3 rounded-xl text-xs space-y-2 hover:border-zinc-800 transition-colors"
-                                  >
-                                    <div className="flex justify-between items-center gap-4">
-                                      <span className="font-bold text-white truncate font-orbitron">{ticket.topic}</span>
-                                      {ticket.status === "resolved" ? (
-                                        <span className="bg-emerald-950/40 text-emerald-500 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border border-emerald-900/40">
-                                          RESOLVED
-                                        </span>
-                                      ) : (
-                                        <span className="bg-amber-950/40 text-amber-500 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border border-amber-900/40 animate-pulse">
-                                          OPEN
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className="text-zinc-400 text-[11px] leading-relaxed font-mono bg-black/40 p-2.5 rounded-lg border border-zinc-900">{ticket.message}</p>
-                                    <div className="flex justify-between items-center text-[10px] text-zinc-600 font-mono pt-1">
-                                      <span>Ref ID: #{ticket.id.slice(1, 6).toUpperCase()}</span>
-                                      <span>{new Date(ticket.timestamp).toLocaleDateString()}</span>
-                                    </div>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* 5. SECURITY TAB */}
-                      {profileTab === "settings" && (
-                        <motion.div
-                          key="tab-security"
-                          initial={{ opacity: 0, y: 5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -5 }}
-                          className="space-y-4"
-                        >
-                          <div className="bg-[#121212] border border-zinc-900 p-5 rounded-xl space-y-4 shadow-sm">
-                            <h4 className="font-orbitron font-bold text-red-500 text-xs uppercase tracking-widest border-b border-zinc-900 pb-2">
-                              SECURITY & PREFERENCES
-                            </h4>
-
-                            <div className="space-y-3.5">
-                              <button
-                                onClick={openEditModal}
-                                className="w-full bg-[#0a0a0a] hover:bg-[#121212] border border-zinc-850 hover:border-zinc-700 transition-all text-white text-xs font-bold py-3.5 rounded-lg tracking-wide flex items-center justify-between px-4 cursor-pointer"
-                              >
-                                <span className="flex items-center gap-2">
-                                  <UserIcon className="w-4 h-4 text-red-500" />
-                                  CHANGE DISPLAY NAME
-                                </span>
-                                <span className="text-zinc-500 font-mono text-[10px]">{userData?.name} &rarr;</span>
-                              </button>
-
-                              <button
-                                onClick={() => setPassModal(true)}
-                                className="w-full bg-[#0a0a0a] hover:bg-[#121212] border border-zinc-850 hover:border-zinc-700 transition-all text-white text-xs font-bold py-3.5 rounded-lg tracking-wide flex items-center justify-between px-4 cursor-pointer"
-                              >
-                                <span className="flex items-center gap-2">
-                                  <Key className="w-4 h-4 text-red-500" />
-                                  CHANGE ACCESS PASSWORD
-                                </span>
-                                <span className="text-zinc-500 font-mono text-[10px]">Secure &rarr;</span>
-                              </button>
-
-                              <button
-                                onClick={handleLogout}
-                                className="w-full bg-red-950/20 hover:bg-red-950/40 border border-red-950/40 hover:border-red-900 transition-all text-red-500 text-xs font-bold py-3.5 rounded-lg tracking-widest flex items-center justify-center gap-2 cursor-pointer mt-2"
-                              >
-                                <LogOut className="w-4 h-4" />
-                                LOG OUT OF SYSTEM
-                              </button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                  <ProfileSection
+                    userData={userData}
+                    userOrders={userOrders}
+                    userDeposits={userDeposits}
+                    systemNotifications={systemNotifications}
+                    userTickets={userTickets}
+                    supportTopic={supportTopic}
+                    setSupportTopic={setSupportTopic}
+                    supportMessage={supportMessage}
+                    setSupportMessage={setSupportMessage}
+                    loading={loading}
+                    submitSupportTicket={submitSupportTicket}
+                    openEditModal={openEditModal}
+                    setPassModal={setPassModal}
+                    handleLogout={handleLogout}
+                    copyToClipboard={copyToClipboard}
+                    copiedId={copiedId}
+                    setActiveSection={setActiveSection}
+                    openTopup={openTopup}
+                    historySubTab={historySubTab}
+                    setHistorySubTab={setHistorySubTab}
+                  />
                 </motion.div>
               )}
 
