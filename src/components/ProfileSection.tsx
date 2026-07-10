@@ -28,7 +28,8 @@ import {
   Check,
   DollarSign,
   Gift,
-  ExternalLink
+  ExternalLink,
+  Link
 } from "lucide-react";
 import { UserData } from "../types";
 
@@ -49,8 +50,8 @@ export interface ProfileSectionProps {
   copiedId: boolean;
   setActiveSection: (sec: "home" | "wallet" | "history" | "profile" | "topup") => void;
   openTopup: (game: "Free Fire" | "PUBG Mobile") => void;
-  activeTab: "overview" | "favorites" | "notifications" | "support" | "refer" | "policies";
-  setActiveTab: (val: "overview" | "favorites" | "notifications" | "support" | "refer" | "policies") => void;
+  activeTab: "menu" | "overview" | "favorites" | "notifications" | "support" | "refer" | "policies" | "settings";
+  setActiveTab: (val: "menu" | "overview" | "favorites" | "notifications" | "support" | "refer" | "policies" | "settings") => void;
 }
 
 export default function ProfileSection({
@@ -107,140 +108,317 @@ export default function ProfileSection({
     setActiveTab("support");
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Upper header dashboard bar with back to home button */}
-      <div className="flex items-center justify-between border-b border-zinc-900 pb-4 mb-2">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setActiveSection("home")}
-            className="p-2 hover:bg-zinc-900 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
-            title="Go back to Home"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-2">
-            <UserIcon className="w-5 h-5 text-red-600" />
-            <h2 className="font-orbitron text-xl font-bold tracking-wide text-white uppercase">Profile Dashboard</h2>
+  if (activeTab === "menu") {
+    return (
+      <div className="space-y-5 max-w-2xl mx-auto pb-10">
+        {/* Profile Header */}
+        <div className="flex items-center justify-between border-b border-zinc-900 pb-3 mb-2">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setActiveSection("home")}
+              className="p-2 hover:bg-zinc-900 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
+              title="Go back to Home"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <h2 className="font-orbitron text-lg font-bold tracking-wide text-white uppercase">Profile</h2>
+          </div>
+          
+          <div className="flex items-center gap-1.5 bg-red-950/40 text-red-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-red-900/40">
+            <ShieldCheck className="w-3.5 h-3.5 animate-pulse" />
+            <span>VERIFIED PLAYER</span>
           </div>
         </div>
-        
-        {/* Verification indicator badge */}
-        <div className="flex items-center gap-1.5 bg-red-950/40 text-red-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-red-900/40">
-          <ShieldCheck className="w-3.5 h-3.5 animate-pulse" />
-          <span>VERIFIED PLAYER</span>
-        </div>
-      </div>
 
-      {/* Main split dual-column responsive layout */}
-      <div className="flex flex-col md:flex-row gap-6 min-h-[550px]">
-        
-        {/* LEFT COLUMN: NAVIGATION & PROFILE CARD */}
-        <div className="w-full md:w-64 flex-shrink-0 space-y-4">
+        {/* 1. TOP USER CARD */}
+        <div className="bg-[#121212]/80 border border-zinc-900/80 rounded-2xl p-4 flex items-center justify-between gap-4 relative overflow-hidden shadow-lg">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-red-600/5 rounded-full blur-2xl"></div>
           
-          {/* Top profile header panel widget */}
-          <div className="bg-gradient-to-b from-[#121212] to-[#0a0a0a] rounded-2xl border border-zinc-900 p-4 flex items-center gap-3.5 relative overflow-hidden shadow-md">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-red-600/5 rounded-full blur-2xl"></div>
-            
-            {/* Avatar container */}
-            <div className="w-12 h-12 rounded-full border-2 border-red-600 flex items-center justify-center bg-red-950/20 text-red-500 relative flex-shrink-0">
-              <UserIcon className="w-6 h-6 text-white" />
+          <div className="flex items-center gap-4 min-w-0">
+            {/* Avatar image / blue outline container */}
+            <div className="w-14 h-14 rounded-full border-2 border-blue-500 flex items-center justify-center bg-blue-950/20 text-blue-400 relative flex-shrink-0">
+              <UserIcon className="w-7 h-7 text-white" />
             </div>
 
-            <div className="min-w-0 flex-1">
-              <h3 className="font-orbitron font-extrabold text-sm text-white tracking-wide truncate">
+            <div className="min-w-0">
+              <h3 className="font-orbitron font-extrabold text-md text-white tracking-wide truncate">
                 {userData?.name ?? "Guest Gamer"}
               </h3>
-              <p className="text-zinc-500 text-[10px] font-mono truncate">{userData?.email ?? "guest@bnytopup.com"}</p>
+              <p className="text-zinc-500 text-xs font-mono truncate">{userData?.email ?? "guest@bnytopup.com"}</p>
               
-              {/* Point stats display */}
-              <div className="flex items-center gap-1.5 text-red-500 font-bold text-[10px] mt-1 bg-red-950/30 px-2 py-0.5 rounded-full w-fit border border-red-900/20">
-                <Coins className="w-3 h-3" />
+              {/* Point stats display with blue accent link icon */}
+              <div className="flex items-center gap-1 text-blue-400 font-extrabold text-[11px] mt-1 hover:underline cursor-pointer">
+                <Link className="w-3.5 h-3.5" />
                 <span>{userData?.balance ?? 0} Points</span>
               </div>
             </div>
           </div>
 
-          {/* Navigation vertical list (shown as sidebar on wide screens) */}
-          <div className="hidden md:flex flex-col bg-[#0b0b0b] border border-zinc-900 rounded-2xl p-2 space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    // Reset expanded item states when switching tabs
-                    setExpandedOrder(null);
-                    setExpandedDeposit(null);
-                  }}
-                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer border ${
-                    isActive
-                      ? "bg-red-950/20 text-red-500 border-red-900/50 shadow-[0_0_15px_rgba(255,0,0,0.1)] font-extrabold"
-                      : "text-zinc-400 border-transparent hover:text-white hover:bg-zinc-900/30"
-                  }`}
-                >
-                  <span className="flex items-center gap-2.5">
-                    <Icon className="w-4 h-4" />
-                    {item.label}
-                  </span>
-                  {item.badge ? (
-                    <span className="bg-red-600 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full">
-                      {item.badge}
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
+          {/* Edit icon */}
+          <button
+            onClick={openEditModal}
+            className="p-3 bg-blue-950/20 border border-blue-900/40 hover:bg-blue-950/40 hover:border-blue-500/50 text-blue-400 hover:text-white rounded-xl transition-all cursor-pointer"
+            title="Edit Display Name"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+        </div>
 
-            {/* Logout shortcut link */}
-            <div className="border-t border-zinc-900 my-2 pt-2">
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider text-red-500 hover:text-red-400 hover:bg-red-950/20 transition-all duration-200 cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-                Logout
-              </button>
+        {/* 2. MENU OPTIONS LIST */}
+        <div className="space-y-3">
+          
+          {/* Store Points */}
+          <div
+            onClick={() => setActiveTab("overview")}
+            className="group bg-[#121212]/80 border border-zinc-900/80 hover:border-zinc-800/80 hover:bg-zinc-900/20 rounded-2xl p-4 flex justify-between items-center cursor-pointer transition-all duration-200"
+          >
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="bg-blue-500/10 text-blue-400 p-3 rounded-2xl flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
+                <Coins className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-bold text-white text-xs group-hover:text-blue-400 transition-colors">Store Points</h4>
+                <p className="text-[11px] text-zinc-500 truncate mt-0.5">Balance: {userData?.balance ?? 0} Points</p>
+              </div>
             </div>
+            <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors flex-shrink-0" />
           </div>
 
-          {/* Horizontal scroll navigation (shown strictly on mobile) */}
-          <div className="flex md:hidden bg-[#0b0b0b] border border-zinc-900 rounded-2xl p-1.5 overflow-x-auto gap-1 no-scrollbar scroll-smooth">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    setExpandedOrder(null);
-                    setExpandedDeposit(null);
-                  }}
-                  className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all duration-200 cursor-pointer border ${
-                    isActive
-                      ? "bg-red-950/30 text-red-500 border-red-900/40 shadow-[0_0_15px_rgba(255,0,0,0.1)]"
-                      : "text-zinc-500 border-transparent hover:text-zinc-300"
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {item.label}
-                  {item.badge ? (
-                    <span className="bg-red-600 text-white text-[8px] font-mono px-1 rounded-full">
-                      {item.badge}
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
+          {/* My Orders */}
+          <div
+            onClick={() => setActiveSection("history")}
+            className="group bg-[#121212]/80 border border-zinc-900/80 hover:border-zinc-800/80 hover:bg-zinc-900/20 rounded-2xl p-4 flex justify-between items-center cursor-pointer transition-all duration-200"
+          >
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="bg-zinc-800/50 text-zinc-300 p-3 rounded-2xl flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
+                <ShoppingCart className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-bold text-white text-xs group-hover:text-red-500 transition-colors">My Orders</h4>
+                <p className="text-[11px] text-zinc-500 truncate mt-0.5">Track your purchases</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors flex-shrink-0" />
+          </div>
+
+          {/* Favorites */}
+          <div
+            onClick={() => setActiveTab("favorites")}
+            className="group bg-[#121212]/80 border border-zinc-900/80 hover:border-zinc-800/80 hover:bg-zinc-900/20 rounded-2xl p-4 flex justify-between items-center cursor-pointer transition-all duration-200"
+          >
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="bg-red-500/10 text-red-500 p-3 rounded-2xl flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
+                <Heart className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-bold text-white text-xs group-hover:text-red-500 transition-colors">Favorites</h4>
+                <p className="text-[11px] text-zinc-500 truncate mt-0.5">Your favorite games</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors flex-shrink-0" />
+          </div>
+
+          {/* Notifications */}
+          <div
+            onClick={() => setActiveTab("notifications")}
+            className="group bg-[#121212]/80 border border-zinc-900/80 hover:border-zinc-800/80 hover:bg-zinc-900/20 rounded-2xl p-4 flex justify-between items-center cursor-pointer transition-all duration-200"
+          >
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="bg-amber-500/10 text-amber-500 p-3 rounded-2xl flex-shrink-0 group-hover:scale-105 transition-transform duration-200 relative">
+                <Bell className="w-5 h-5" />
+                {systemNotifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+                    {systemNotifications.length}
+                  </span>
+                )}
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-bold text-white text-xs group-hover:text-amber-500 transition-colors">Notifications</h4>
+                <p className="text-[11px] text-zinc-500 truncate mt-0.5">Stay updated</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors flex-shrink-0" />
+          </div>
+
+          {/* Support Chat */}
+          <div
+            onClick={() => setActiveTab("support")}
+            className="group bg-[#121212]/80 border border-zinc-900/80 hover:border-zinc-800/80 hover:bg-zinc-900/20 rounded-2xl p-4 flex justify-between items-center cursor-pointer transition-all duration-200"
+          >
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="bg-emerald-500/10 text-emerald-500 p-3 rounded-2xl flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
+                <MessageSquare className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-bold text-white text-xs group-hover:text-emerald-500 transition-colors">Support Chat</h4>
+                <p className="text-[11px] text-zinc-500 truncate mt-0.5">Chat with our team</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors flex-shrink-0" />
+          </div>
+
+          {/* Refer & Earn */}
+          <div
+            onClick={() => setActiveTab("refer")}
+            className="group bg-[#121212]/80 border border-zinc-900/80 hover:border-zinc-800/80 hover:bg-zinc-900/20 rounded-2xl p-4 flex justify-between items-center cursor-pointer transition-all duration-200"
+          >
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="bg-purple-500/10 text-purple-400 p-3 rounded-2xl flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
+                <Gift className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-bold text-white text-xs group-hover:text-purple-400 transition-colors">Refer & Earn</h4>
+                <p className="text-[11px] text-zinc-500 truncate mt-0.5">Share with friends & earn rewards</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors flex-shrink-0" />
+          </div>
+
+          {/* Settings */}
+          <div
+            onClick={() => setActiveTab("settings")}
+            className="group bg-[#121212]/80 border border-zinc-900/80 hover:border-zinc-800/80 hover:bg-zinc-900/20 rounded-2xl p-4 flex justify-between items-center cursor-pointer transition-all duration-200"
+          >
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="bg-zinc-700/10 text-zinc-400 p-3 rounded-2xl flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
+                <Settings className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-bold text-white text-xs group-hover:text-white transition-colors">Settings</h4>
+                <p className="text-[11px] text-zinc-500 truncate mt-0.5">App preferences</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors flex-shrink-0" />
+          </div>
+
+        </div>
+
+        {/* 3. LEGAL SECTION */}
+        <div className="space-y-2.5 pt-2">
+          <span className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-widest pl-1">
+            LEGAL
+          </span>
+
+          <div className="bg-[#121212]/80 border border-zinc-900/80 rounded-2xl overflow-hidden divide-y divide-zinc-900/60 shadow-md">
+            
+            {/* Terms & Conditions */}
+            <div
+              onClick={() => {
+                setActiveTab("policies");
+                setActivePolicy("terms");
+              }}
+              className="group flex justify-between items-center p-4 hover:bg-zinc-900/20 cursor-pointer transition-all"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <FileText className="w-4.5 h-4.5 text-blue-400 flex-shrink-0 group-hover:scale-105 transition-transform" />
+                <span className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors">Terms & Conditions</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors" />
+            </div>
+
+            {/* Refund Policy */}
+            <div
+              onClick={() => {
+                setActiveTab("policies");
+                setActivePolicy("refund");
+              }}
+              className="group flex justify-between items-center p-4 hover:bg-zinc-900/20 cursor-pointer transition-all"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <RotateCcw className="w-4.5 h-4.5 text-blue-400 flex-shrink-0 group-hover:scale-105 transition-transform" />
+                <span className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors">Refund Policy</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors" />
+            </div>
+
+            {/* Cancellation Policy */}
+            <div
+              onClick={() => {
+                setActiveTab("policies");
+                setActivePolicy("cancellation");
+              }}
+              className="group flex justify-between items-center p-4 hover:bg-zinc-900/20 cursor-pointer transition-all"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <XCircle className="w-4.5 h-4.5 text-blue-400 flex-shrink-0 group-hover:scale-105 transition-transform" />
+                <span className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors">Cancellation Policy</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors" />
+            </div>
+
+            {/* Privacy Policy */}
+            <div
+              onClick={() => {
+                setActiveTab("policies");
+                setActivePolicy("privacy");
+              }}
+              className="group flex justify-between items-center p-4 hover:bg-zinc-900/20 cursor-pointer transition-all"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <ShieldCheck className="w-4.5 h-4.5 text-blue-400 flex-shrink-0 group-hover:scale-105 transition-transform" />
+                <span className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors">Privacy Policy</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors" />
+            </div>
+
           </div>
         </div>
 
-        {/* RIGHT COLUMN: DYNAMIC PANEL DISPLAY */}
-        <div className="flex-1 bg-[#0c0c0c] border border-zinc-900/80 rounded-2xl p-4 md:p-6 shadow-inner min-h-[450px]">
-          <AnimatePresence mode="wait">
+        {/* 4. LOGOUT CARD */}
+        <div
+          onClick={handleLogout}
+          className="group bg-red-950/10 border border-red-950 hover:border-red-600/40 hover:bg-red-950/20 rounded-2xl p-4 flex justify-between items-center cursor-pointer transition-all duration-200 mt-4"
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="bg-red-500/20 text-red-500 p-3 rounded-2xl flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
+              <LogOut className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <h4 className="font-bold text-red-500 text-xs">Logout</h4>
+              <p className="text-[11px] text-zinc-500 truncate mt-0.5">Sign out of your account</p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-red-500/60 group-hover:text-red-500 transition-colors flex-shrink-0" />
+        </div>
+
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 max-w-2xl mx-auto pb-12">
+      {/* Detail View Header */}
+      <div className="flex items-center justify-between border-b border-zinc-900 pb-3 mb-2">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActiveTab("menu")}
+            className="p-2 hover:bg-zinc-900 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center gap-1"
+            title="Back to Profile"
+          >
+            <ChevronLeft className="w-5 h-5" />
+            <span className="text-xs font-bold font-mono">Back</span>
+          </button>
+          <h2 className="font-orbitron text-lg font-bold tracking-wide text-white uppercase">
+            {activeTab === "overview" && "Store Points"}
+            {activeTab === "favorites" && "Favorites"}
+            {activeTab === "notifications" && "Notifications"}
+            {activeTab === "support" && "Support Chat"}
+            {activeTab === "refer" && "Refer & Earn"}
+            {activeTab === "policies" && "Policies"}
+            {activeTab === "settings" && "Settings"}
+          </h2>
+        </div>
+        
+        {/* Verification indicator badge */}
+        <div className="hidden sm:flex items-center gap-1.5 bg-red-950/40 text-red-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-red-900/40">
+          <ShieldCheck className="w-3.5 h-3.5 animate-pulse" />
+          <span>VERIFIED PLAYER</span>
+        </div>
+      </div>
+
+      {/* Main card panel displaying active tab details */}
+      <div className="bg-[#0c0c0c] border border-zinc-900/80 rounded-2xl p-4 sm:p-6 shadow-inner min-h-[400px]">
+        <AnimatePresence mode="wait">
             
             {/* 2. OVERVIEW TAB CONTENT */}
             {activeTab === "overview" && (
@@ -734,9 +912,59 @@ export default function ProfileSection({
                 </div>
               </motion.div>
             )}
+
+            {/* 8. SETTINGS TAB CONTENT */}
+            {activeTab === "settings" && (
+              <motion.div
+                key="settings"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-5"
+              >
+                <div>
+                  <h3 className="font-orbitron text-md font-bold text-red-500 uppercase tracking-widest">
+                    Settings & Preferences
+                  </h3>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    Update your account details, display credentials, and credentials passwords
+                  </p>
+                </div>
+
+                <div className="bg-[#121212]/50 border border-zinc-900 p-5 rounded-2xl space-y-4">
+                  <span className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-widest block">
+                    Profile Customization
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <button
+                      onClick={openEditModal}
+                      className="flex items-center justify-between px-4 py-3.5 bg-black hover:bg-zinc-900 border border-zinc-900 hover:border-zinc-800 transition-all text-white text-xs font-bold rounded-xl tracking-wide cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Pencil className="w-4 h-4 text-red-500" />
+                        CHANGE DISPLAY NAME
+                      </span>
+                      <span className="text-zinc-600 font-mono text-[10px]">&rarr;</span>
+                    </button>
+
+                    <button
+                      onClick={() => setPassModal(true)}
+                      className="flex items-center justify-between px-4 py-3.5 bg-black hover:bg-zinc-900 border border-zinc-900 hover:border-zinc-800 transition-all text-white text-xs font-bold rounded-xl tracking-wide cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Key className="w-4 h-4 text-red-500" />
+                        CHANGE PASSWORD
+                      </span>
+                      <span className="text-zinc-600 font-mono text-[10px]">&rarr;</span>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }

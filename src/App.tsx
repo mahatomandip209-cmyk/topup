@@ -75,8 +75,8 @@ export default function App() {
 
   // Profile interactive states
   const [profileActiveTab, setProfileActiveTab] = useState<
-    "overview" | "favorites" | "notifications" | "support" | "refer" | "policies"
-  >("overview");
+    "menu" | "overview" | "favorites" | "notifications" | "support" | "refer" | "policies" | "settings"
+  >("menu");
   const [profileTab, setProfileTab] = useState<"stats" | "history" | "notifications" | "support" | "settings">("stats");
   const [profileSubView, setProfileSubView] = useState<string | null>(null);
   const [historySubTab, setHistorySubTab] = useState<"orders" | "deposits">("orders");
@@ -1161,7 +1161,10 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setActiveSection("profile")}
+              onClick={() => {
+                setProfileActiveTab("menu");
+                setActiveSection("profile");
+              }}
               className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
                 activeSection === "profile" ? "text-red-500" : "text-zinc-600 hover:text-zinc-400"
               }`}
