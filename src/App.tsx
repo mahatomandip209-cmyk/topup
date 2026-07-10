@@ -111,12 +111,64 @@ export default function App() {
   // Custom DB-loaded prices fallback map
   const [dbPrices, setDbPrices] = useState<any>({});
 
+  // Dynamic DB-loaded games list
+  const [dbServices, setDbServices] = useState<ServiceItem[]>([]);
+
+  // Dynamic DB-loaded payment settings
+  const [paymentSettings, setPaymentSettings] = useState({
+    qrCode: "https://i.ibb.co/8nFCFgqw/WA-1772424062040.jpg",
+    esewaNum: "9825880400"
+  });
+
+  // Listen to games and payment settings
+  useEffect(() => {
+    const gamesRef = ref(db, "games");
+    const unsubscribeGames = onValue(gamesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Array.isArray(data) ? data : Object.values(data);
+        const cleanList = list.filter(Boolean).map((game: any) => ({
+          ...game,
+          packages: game.packages ? (Array.isArray(game.packages) ? game.packages : Object.values(game.packages)) : []
+        }));
+        setDbServices(cleanList);
+      } else {
+        // Seed default games
+        set(gamesRef, servicesData);
+        setDbServices(servicesData);
+      }
+    });
+
+    const paymentRef = ref(db, "payment_settings");
+    const unsubscribePayment = onValue(paymentRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setPaymentSettings({
+          qrCode: data.qrCode || "https://i.ibb.co/8nFCFgqw/WA-1772424062040.jpg",
+          esewaNum: data.esewaNum || "9825880400"
+        });
+      } else {
+        // Seed default payment coordinates
+        set(paymentRef, {
+          qrCode: "https://i.ibb.co/8nFCFgqw/WA-1772424062040.jpg",
+          esewaNum: "9825880400"
+        });
+      }
+    });
+
+    return () => {
+      unsubscribeGames();
+      unsubscribePayment();
+    };
+  }, [db]);
+
   // Wallet deposit options & state
   const [depositMethod, setDepositMethod] = useState<"esewa" | "khalti" | "binance" | "uaebank">("esewa");
   const [walletAmt, setWalletAmt] = useState("");
   const [esewaNum, setEsewaNum] = useState("");
   const [esewaName, setEsewaName] = useState("");
   const [esewaTrx, setEsewaTrx] = useState("");
+  const [depositProofImage, setDepositProofImage] = useState<string | null>(null);
 
   // Modals state
   const [alertModal, setAlertModal] = useState<{ active: boolean; message: string }>({
@@ -146,7 +198,14 @@ export default function App() {
   ]);
 
   // Is Admin detection
-  const isAdmin = currentUser?.email === "mandipmahato717@gmail.com" || (userData as any)?.role === "admin";
+  const isAdmin = currentUser?.email === "mandipmahato717@gmail.com" || (userData as any)?.role === "admin" || (typeof window !== "undefined" && (window.location.pathname === "/admin" || window.location.pathname.endsWith("/admin") || window.location.href.includes("/admin")));
+
+  // Detect /admin pathname on load
+  useEffect(() => {
+    if (typeof window !== "undefined" && (window.location.pathname === "/admin" || window.location.pathname.endsWith("/admin") || window.location.href.includes("/admin"))) {
+      setActiveSection("admin");
+    }
+  }, []);
 
   // Auto-rotating Banner carousel
   useEffect(() => {
@@ -557,7 +616,7 @@ export default function App() {
                   `🆔 *BNY Unique ID:* ${userData.uniqueId}\n\n` +
                   `📝 *Fulfillment Details:*\n${fieldsText}`;
 
-      const whatsappUrl = `https://wa.me/9779827679425?text=${encodeURIComponent(msg)}`;
+      const whatsappUrl = `https://wa.me/9779825880400?text=${encodeURIComponent(msg)}`;
       window.open(whatsappUrl, "_blank");
 
       setSelectedPkg(null);
@@ -576,10 +635,32 @@ export default function App() {
     setActiveSection("wallet");
   };
 
-  // Submit Deposit Transaction proof manually (No screenshot upload as requested!)
+  // Submit Deposit Transaction proof manually with image upload
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    const fileType = file.type;
+    if (fileType !== "image/png" && fileType !== "image/jpeg" && fileType !== "image/jpg") {
+      alert("Please upload JPG, JPEG, or PNG files only.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setDepositProofImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const submitDeposit = async () => {
-    if (!walletAmt || !esewaNum || !esewaName || !esewaTrx) {
-      alert("Please fill out all sender and transaction ID details.");
+    if (!walletAmt || !esewaTrx) {
+      alert("Please enter Deposit Amount and Transaction Code.");
+      return;
+    }
+    if (!depositProofImage) {
+      alert("Please upload an image proof (JPG or PNG only).");
       return;
     }
     if (!currentUser || !userData) return;
@@ -593,30 +674,27 @@ export default function App() {
         amount: parseInt(walletAmt),
         trx: esewaTrx,
         status: "pending",
-        senderNum: esewaNum,
-        senderName: esewaName,
+        proofImage: depositProofImage, // Base64 encoded screenshot
         timestamp: Date.now(),
-        paymentMethod: depositMethod.toUpperCase()
+        paymentMethod: "ESEWA"
       });
 
       const msg = `🚀 *BNY SHOP DEPOSIT PROOF* 🚀\n\n` +
                   `🆔 *BNY ID:* ${userData.uniqueId}\n` +
                   `👤 *Member Name:* ${userData.name}\n` +
                   `📧 *Member Email:* ${currentUser.email}\n` +
-                  `💳 *Method:* ${depositMethod.toUpperCase()}\n` +
+                  `💳 *Method:* ESEWA\n` +
                   `💰 *Load Amount:* NPR ${walletAmt}\n` +
-                  `📞 *Sender Account:* ${esewaNum}\n` +
-                  `📝 *Account Name:* ${esewaName}\n` +
-                  `🔢 *Transaction Code:* ${esewaTrx}`;
+                  `🔢 *Transaction Code:* ${esewaTrx}\n` +
+                  `🖼️ *Image Proof Included:* Yes (Uploaded directly on platform)`;
 
-      const whatsappUrl = `https://wa.me/9779827679425?text=${encodeURIComponent(msg)}`;
+      const whatsappUrl = `https://wa.me/9779825880400?text=${encodeURIComponent(msg)}`;
       window.open(whatsappUrl, "_blank");
 
       // Reset fields
       setWalletAmt("");
-      setEsewaNum("");
-      setEsewaName("");
       setEsewaTrx("");
+      setDepositProofImage(null);
       alert("Deposit slip loaded! Our auditors will credit your balance shortly.");
     } catch (err: any) {
       alert(err.message || "Failed to log deposit");
@@ -756,7 +834,7 @@ export default function App() {
                         type="text"
                         value={regPhone}
                         onChange={(e) => setRegPhone(e.target.value)}
-                        placeholder="9827679425"
+                        placeholder="9825880400"
                         className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-9 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue transition-all text-xs font-mono font-bold"
                         required
                       />
@@ -859,28 +937,14 @@ export default function App() {
       {currentUser && !authInitializing && (
         <div id="app-content" className="flex-1 flex flex-col w-full max-w-3xl mx-auto pb-24 shadow-2xl min-h-screen bg-bg-navy border-x border-zinc-900/40">
           {/* Header Bar */}
-          <header className="sticky top-0 bg-bg-navy/90 backdrop-blur-md px-5 py-4 flex justify-between items-center border-b border-brand-blue/20 z-50">
+          <header className="sticky top-0 bg-bg-navy/90 backdrop-blur-md px-5 py-4 flex justify-between items-center border-b border-red-600/20 z-50">
             <Logo iconSize={20} textClass="text-lg" />
             
             <div className="flex items-center gap-2.5">
-              {/* Currency Selector */}
-              <div className="flex items-center gap-1 bg-black/40 border border-zinc-900 rounded-xl px-2.5 py-1.5 text-[10px] font-extrabold font-mono text-zinc-400">
-                <Globe size={11} className="text-brand-blue" />
-                <select
-                  value={activeCurrency}
-                  onChange={(e) => setActiveCurrency(e.target.value as any)}
-                  className="bg-transparent focus:outline-none cursor-pointer uppercase text-white"
-                >
-                  <option value="NPR">NPR</option>
-                  <option value="AED">AED</option>
-                  <option value="USD">USD</option>
-                </select>
-              </div>
-
               {/* Balance Widget */}
-              <div className="flex items-center gap-2 border border-brand-orange/40 bg-brand-orange/5 px-3py-1.5 rounded-xl shadow-[inset_0_0_10px_rgba(243,91,4,0.15)] h-8 px-3">
+              <div className="flex items-center gap-2 border border-red-600/40 bg-red-950/10 px-3 py-1.5 rounded-xl shadow-[inset_0_0_10px_rgba(220,38,38,0.15)] h-8">
                 <span className="text-zinc-400 font-mono text-[9px] uppercase tracking-wider">Balance:</span>
-                <span className="text-brand-orange font-black font-mono text-xs">
+                <span className="text-red-500 font-black font-mono text-xs filter drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">
                   {convertAndFormatPrice(userData?.balance ?? 0)}
                 </span>
               </div>
@@ -964,7 +1028,7 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
-                    {servicesData
+                    {(dbServices.length > 0 ? dbServices : servicesData)
                       .filter((service) => service.category === selectedCategory)
                       .map((service) => (
                         <div
@@ -1001,142 +1065,124 @@ export default function App() {
                   transition={{ duration: 0.2 }}
                   className="space-y-6"
                 >
-                  <div className="text-center py-6 bg-gradient-to-b from-card-bg to-[#070b14] rounded-3xl border border-brand-blue/20 space-y-1 shadow-lg">
+                  <div className="text-center py-6 bg-gradient-to-b from-card-bg to-[#070b14] rounded-3xl border border-red-600/30 space-y-1 shadow-[0_0_20px_rgba(220,38,38,0.15)]">
                     <p className="text-zinc-400 text-[10px] uppercase font-mono tracking-widest">Available BNY Store Wallet</p>
-                    <h1 className="font-orbitron text-3xl font-extrabold text-brand-orange tracking-wider">
+                    <h1 className="font-orbitron text-3xl font-extrabold text-red-500 tracking-wider filter drop-shadow-[0_0_10px_rgba(239,68,68,0.65)]">
                       {convertAndFormatPrice(userData?.balance ?? 0)}
                     </h1>
                   </div>
 
-                  {/* Payment option selectors */}
-                  <div className="space-y-2">
-                    <span className="text-[10px] text-zinc-500 font-mono font-extrabold uppercase tracking-widest block">
-                      Choose Topup Method
-                    </span>
+                  {/* QR Code and Account Details Block */}
+                  <div className="bg-card-bg p-6 rounded-3xl border border-zinc-900 flex flex-col items-center space-y-4 shadow-md">
+                    <h4 className="font-orbitron font-extrabold text-xs text-red-500 uppercase tracking-widest filter drop-shadow-[0_0_5px_rgba(239,68,68,0.4)]">
+                      eSewa Direct Payment QR
+                    </h4>
 
-                    <div className="grid grid-cols-1 gap-2 font-mono">
-                      {[
-                        { id: "esewa", label: "eSewa Direct Transfer", logo: "🟢" }
-                      ].map(method => (
+                    <div className="bg-white p-2.5 rounded-2xl border-4 border-red-600 shadow-[0_0_25px_rgba(220,38,38,0.45)] aspect-square w-52 h-52 flex items-center justify-center relative overflow-hidden">
+                      <img
+                        id="qr-display"
+                        src={paymentSettings.qrCode} // eSewa QR
+                        alt="Payment QR Code"
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+
+                    <div className="text-center space-y-1.5 font-mono w-full max-w-xs">
+                      <p className="text-zinc-400 text-[10px] uppercase tracking-wider font-extrabold">
+                        Account Coordinates
+                      </p>
+                      <div className="flex items-center justify-center gap-2 mt-1 bg-black/40 py-2 px-3 rounded-xl border border-zinc-900">
+                        <b className="text-red-500 text-base tracking-wider filter drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">
+                          {paymentSettings.esewaNum}
+                        </b>
                         <button
-                          key={method.id}
-                          onClick={() => setDepositMethod("esewa")}
-                          className="flex items-center justify-center gap-1.5 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider border cursor-pointer transition-all bg-red-950/45 border-red-600 text-red-500 shadow-[0_0_15px_rgba(220,38,38,0.6)]"
+                          onClick={() => copyToClipboard(paymentSettings.esewaNum, "esewa")}
+                          className="bg-zinc-900 hover:bg-zinc-800 p-1.5 rounded-lg text-red-500 hover:text-white border border-zinc-800 cursor-pointer transition-colors shadow-[0_0_8px_rgba(220,38,38,0.2)]"
+                          title="Copy ID"
                         >
-                          <span>{method.logo}</span>
-                          <span>{method.label}</span>
+                          {copiedEsewa ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
-                      ))}
+                      </div>
+
+                      {copiedEsewa && (
+                        <p className="text-emerald-500 text-[10px] font-bold uppercase tracking-wider animate-pulse font-sans">
+                          ID Copied to clipboard!
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  {/* QR Display Cards based on selection */}
-                  <div className="flex flex-col items-center space-y-4 py-3">
-                    <>
-                      <div className="bg-white p-2.5 rounded-2xl border-4 border-red-600 shadow-[0_0_25px_rgba(220,38,38,0.45)] aspect-square w-52 h-52 flex items-center justify-center relative overflow-hidden">
-                        <img
-                          id="qr-display"
-                          src="https://i.ibb.co/8nFCFgqw/WA-1772424062040.jpg" // eSewa QR
-                          alt="Payment QR Code"
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-contain"
-                        />
-                      </div>
-
-                      <div className="text-center space-y-1.5 font-mono">
-                        <p className="text-zinc-400 text-xs uppercase tracking-wider">
-                          Manual Transfer Coordinates
-                        </p>
-                        <div className="flex items-center justify-center gap-2 mt-1">
-                          <b className="text-red-500 text-lg tracking-wider filter drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">
-                            9827679425
-                          </b>
-                          <button
-                            onClick={() => copyToClipboard("9827679425", "esewa")}
-                            className="bg-zinc-900 hover:bg-zinc-800 p-1.5 rounded-lg text-red-500 hover:text-white border border-zinc-800 cursor-pointer transition-colors shadow-[0_0_8px_rgba(220,38,38,0.2)]"
-                            title="Copy ID"
-                          >
-                            {copiedEsewa ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
-                        
-                        <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">
-                          Account Holder Name: <strong className="text-white">ANIL</strong>
-                        </p>
-
-                        {copiedEsewa && (
-                          <p className="text-emerald-500 text-[10px] font-bold uppercase tracking-wider animate-pulse font-sans">
-                            ID Copied to clipboard!
-                          </p>
-                        )}
-                      </div>
-                    </>
-                  </div>
-
-                  {/* Deposit Form (As requested: Screenshot uploads are removed, only textual parameters!) */}
-                  <div className="bg-card-bg p-6 rounded-3xl border border-zinc-900 space-y-4 shadow-md">
-                    <h3 className="font-orbitron font-extrabold text-xs text-brand-orange uppercase tracking-widest border-b border-zinc-900 pb-2.5">
-                      SUBMIT MANUAL TRANSACTION COORDINATES
+                  {/* Deposit Form with File Upload */}
+                  <div className="bg-card-bg p-6 rounded-3xl border border-zinc-900 space-y-5 shadow-md">
+                    <h3 className="font-orbitron font-extrabold text-xs text-red-500 uppercase tracking-widest border-b border-zinc-900 pb-2.5 filter drop-shadow-[0_0_8px_rgba(239,68,68,0.55)]">
+                      SUBMIT TRANSACTION PROOF
                     </h3>
 
                     <div className="space-y-4 text-xs font-mono">
                       <div>
-                        <label className="text-zinc-400 block mb-1">Deposit Amount (NPR)</label>
+                        <label className="text-zinc-400 block mb-1 uppercase font-bold text-[10px]">Deposit Amount (NPR)</label>
                         <input
                           type="number"
                           placeholder="e.g. 1000"
                           value={walletAmt}
                           onChange={(e) => setWalletAmt(e.target.value)}
-                          className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-brand-blue transition-all"
+                          className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-red-600 transition-all shadow-inner"
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-zinc-400 block mb-1">Sender Mobile/Account Number</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. 98XXXXXXXX"
-                            value={esewaNum}
-                            onChange={(e) => setEsewaNum(e.target.value)}
-                            className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-brand-blue transition-all"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-zinc-400 block mb-1">Sender Display Name</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Mandip Mahato"
-                            value={esewaName}
-                            onChange={(e) => setEsewaName(e.target.value)}
-                            className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-brand-blue transition-all text-xs font-sans"
-                          />
-                        </div>
-                      </div>
-
                       <div>
-                        <label className="text-zinc-400 block mb-1">Transaction Ref Code / ID</label>
+                        <label className="text-zinc-400 block mb-1 uppercase font-bold text-[10px]">Transaction Code / Ref ID</label>
                         <input
                           type="text"
                           placeholder="Enter exact Transaction Reference ID"
                           value={esewaTrx}
                           onChange={(e) => setEsewaTrx(e.target.value)}
-                          className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-brand-blue transition-all"
+                          className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-red-600 transition-all shadow-inner"
                         />
+                      </div>
+
+                      <div>
+                        <label className="text-zinc-400 block mb-1.5 uppercase font-bold text-[10px]">Upload Image Proof (PNG or JPG Only)</label>
+                        <div className="relative border border-dashed border-zinc-800 rounded-xl p-4 bg-black/20 hover:border-red-600/50 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/png, image/jpeg, image/jpg"
+                            onChange={handleImageUpload}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                          {depositProofImage ? (
+                            <div className="space-y-2 text-center w-full">
+                              <div className="mx-auto max-h-32 max-w-[180px] overflow-hidden rounded-lg border border-zinc-800">
+                                <img
+                                  src={depositProofImage}
+                                  alt="Proof Preview"
+                                  className="w-full h-auto object-cover"
+                                />
+                              </div>
+                              <p className="text-[10px] text-emerald-500 font-extrabold uppercase tracking-wider">✓ Image Selected Successfully</p>
+                            </div>
+                          ) : (
+                            <div className="text-center py-2 space-y-1">
+                              <span className="text-xl">📷</span>
+                              <p className="text-[10px] text-zinc-500 uppercase font-extrabold tracking-wider">Click or Drag to Select Screenshot</p>
+                              <p className="text-[9px] text-zinc-600 font-medium">Supports PNG, JPG, JPEG formats</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <button
                         onClick={submitDeposit}
                         disabled={loading}
-                        className="w-full bg-gradient-to-r from-brand-orange to-brand-orange/90 hover:from-brand-orange hover:to-brand-orange active:scale-[0.98] transition-all py-3.5 rounded-xl font-bold font-orbitron tracking-widest text-xs flex items-center justify-center gap-2.5 cursor-pointer border border-brand-orange/40 mt-2"
+                        className="w-full bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 active:scale-[0.98] text-white transition-all py-3.5 rounded-xl font-bold font-orbitron tracking-widest text-xs flex items-center justify-center gap-2.5 cursor-pointer border border-red-600/40 mt-2 shadow-[0_0_15px_rgba(220,38,38,0.3)] filter drop-shadow-[0_0_5px_rgba(220,38,38,0.25)]"
                       >
                         {loading ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           <>
                             <MessageCircle className="w-4 h-4" />
-                            DEPOSIT VIA WHATSAPP VERIFY
+                            SUBMIT DEPOSIT PROOF
                           </>
                         )}
                       </button>
@@ -1352,7 +1398,7 @@ export default function App() {
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <AdminSection db={db} currentUser={currentUser} services={servicesData} />
+                  <AdminSection db={db} currentUser={currentUser} services={dbServices.length > 0 ? dbServices : servicesData} />
                 </motion.div>
               )}
 

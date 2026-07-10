@@ -338,7 +338,7 @@ export default function HistorySection({
                         <span className="text-white font-bold text-xs truncate">Ref ID: {dep.trx}</span>
                       </div>
                       <div className="font-mono text-zinc-500 text-[10px]">
-                        Sender: {dep.senderName} &bull; {new Date(dep.timestamp).toLocaleDateString()}
+                        {dep.senderName ? `Sender: ${dep.senderName} • ` : ""}Date: {new Date(dep.timestamp).toLocaleDateString()}
                       </div>
                     </div>
 
@@ -375,10 +375,12 @@ export default function HistorySection({
                           <span className="text-[10px] text-zinc-500 block uppercase font-bold">Transaction Code</span>
                           <span className="text-white font-bold tracking-wide">{dep.trx}</span>
                         </div>
-                        <div>
-                          <span className="text-[10px] text-zinc-500 block uppercase font-bold">Sender Name</span>
-                          <span className="text-white font-bold truncate block">{dep.senderName}</span>
-                        </div>
+                        {dep.senderName && (
+                          <div>
+                            <span className="text-[10px] text-zinc-500 block uppercase font-bold">Sender Name</span>
+                            <span className="text-white font-bold truncate block">{dep.senderName}</span>
+                          </div>
+                        )}
                         <div>
                           <span className="text-[10px] text-zinc-500 block uppercase font-bold">Loaded Points</span>
                           <span className="text-emerald-500 font-extrabold text-xs">RS {dep.amount}</span>
@@ -390,6 +392,19 @@ export default function HistorySection({
                           </span>
                         </div>
                       </div>
+
+                      {dep.proofImage && (
+                        <div className="bg-[#0c0c0c] p-3 rounded-xl border border-zinc-900 text-center space-y-2">
+                          <span className="text-[10px] text-zinc-500 block uppercase font-bold">Your Uploaded Proof</span>
+                          <div className="flex justify-center">
+                            <img
+                              src={dep.proofImage}
+                              alt="Uploaded Proof"
+                              className="max-h-48 rounded border border-zinc-800 object-contain"
+                            />
+                          </div>
+                        </div>
+                      )}
 
                       <div className="bg-[#121212]/80 border border-zinc-900 p-3 rounded-xl text-[11px] leading-relaxed text-zinc-400">
                         {dep.status === "approved" ? (

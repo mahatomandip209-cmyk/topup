@@ -218,28 +218,6 @@ export default function ProfileSection({
             <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors flex-shrink-0" />
           </div>
 
-          {/* Notifications */}
-          <div
-            onClick={() => setActiveTab("notifications")}
-            className="group bg-[#121212]/80 border border-zinc-900/80 hover:border-zinc-800/80 hover:bg-zinc-900/20 rounded-2xl p-4 flex justify-between items-center cursor-pointer transition-all duration-200"
-          >
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="bg-amber-500/10 text-amber-500 p-3 rounded-2xl flex-shrink-0 group-hover:scale-105 transition-transform duration-200 relative">
-                <Bell className="w-5 h-5" />
-                {systemNotifications.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
-                    {systemNotifications.length}
-                  </span>
-                )}
-              </div>
-              <div className="min-w-0">
-                <h4 className="font-bold text-white text-xs group-hover:text-amber-500 transition-colors">Notifications</h4>
-                <p className="text-[11px] text-zinc-500 truncate mt-0.5">Stay updated</p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors flex-shrink-0" />
-          </div>
-
           {/* Support Chat */}
           <div
             onClick={() => setActiveTab("support")}
@@ -789,11 +767,11 @@ export default function ProfileSection({
 
                   <div className="bg-black border border-zinc-900 rounded-xl p-3 flex justify-between items-center text-xs font-mono max-w-sm mx-auto">
                     <span className="text-red-500 font-bold truncate pr-3 select-all">
-                      https://bnytopup.com/ref/{userData?.uniqueId || "GAMER"}
+                      {typeof window !== "undefined" ? window.location.origin : "https://bnytopup.vercel.app"}/ref/{userData?.uniqueId || "GAMER"}
                     </span>
                     <button
                       onClick={() =>
-                        copyToClipboard(`https://bnytopup.com/ref/${userData?.uniqueId || "GAMER"}`, "ID")
+                        copyToClipboard(`${typeof window !== "undefined" ? window.location.origin : "https://bnytopup.vercel.app"}/ref/${userData?.uniqueId || "GAMER"}`, "ID")
                       }
                       className="bg-red-950/30 hover:bg-red-900/40 p-2 rounded-lg text-red-500 cursor-pointer transition-all border border-red-900/20"
                       title="Copy referral link"
