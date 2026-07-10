@@ -98,6 +98,9 @@ export default function App() {
   // Multi-Currency State
   const [activeCurrency, setActiveCurrency] = useState<"NPR" | "AED" | "USD">("NPR");
 
+  // Category selection state
+  const [selectedCategory, setSelectedCategory] = useState<"topup" | "voucher" | "subscription">("topup");
+
   // Active service selection (one of the 10 services)
   const [activeService, setActiveService] = useState<ServiceItem | null>(null);
   const [selectedPkg, setSelectedPkg] = useState<GamePackage | null>(null);
@@ -905,15 +908,7 @@ export default function App() {
                 ))}
               </div>
               
-              {/* Slider Tagline Overlay */}
-              <div className="absolute left-5 bottom-4 z-10 hidden sm:block">
-                <p className="font-orbitron font-extrabold text-sm text-brand-orange drop-shadow-md">
-                  OUR PRIORITY IS YOUR TRUST
-                </p>
-                <p className="text-[10px] text-zinc-300 font-medium">
-                  Instant Verification &middot; 24/7 Digital Dispatch
-                </p>
-              </div>
+              {/* Tagline overlay removed */}
 
               {/* Pagination Dots */}
               <div className="absolute bottom-4 right-5 flex gap-1.5 z-10">
@@ -944,41 +939,54 @@ export default function App() {
                   transition={{ duration: 0.2 }}
                   className="space-y-6"
                 >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="font-orbitron text-md font-black text-white tracking-widest flex items-center gap-2">
-                        <span className="w-2 h-2 bg-brand-orange animate-ping rounded-full"></span>
-                        PREMIUM DIGITAL SERVICES
-                      </h3>
-                      <p className="text-zinc-500 text-[10px] font-mono mt-0.5">LOAD INSTANT STORE SERVICES & GAME CREDITS</p>
-                    </div>
+                  {/* Category Tabs Selector with Red Glowing Design */}
+                  <div className="flex justify-center gap-2.5 pb-2 border-b border-zinc-900/40">
+                    {[
+                      { id: "topup", label: "Topup" },
+                      { id: "voucher", label: "Voucher" },
+                      { id: "subscription", label: "Subscription" }
+                    ].map((cat) => {
+                      const isActive = selectedCategory === cat.id;
+                      return (
+                        <button
+                          key={cat.id}
+                          onClick={() => setSelectedCategory(cat.id as any)}
+                          className={`flex-1 max-w-[120px] py-2.5 rounded-xl font-orbitron font-extrabold text-[11px] uppercase tracking-wider transition-all duration-300 border cursor-pointer text-center ${
+                            isActive
+                              ? "bg-red-950/45 border-red-600 text-red-500 shadow-[0_0_15px_rgba(220,38,38,0.65)] scale-105"
+                              : "bg-black/40 border-zinc-900 text-zinc-500 hover:text-zinc-300 hover:border-zinc-800"
+                          }`}
+                        >
+                          {cat.label}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
-                    {servicesData.map((service) => (
-                      <div
-                        key={service.id}
-                        onClick={() => openTopup(service)}
-                        className="group bg-card-bg rounded-2xl overflow-hidden border border-zinc-900 hover:border-brand-orange/60 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-[0_0_20px_rgba(243,91,4,0.1)] active:scale-95 flex flex-col justify-between"
-                      >
-                        <div className="relative aspect-[4/3] overflow-hidden bg-black/60 flex items-center justify-center p-2 border-b border-zinc-900/40">
-                          <img
-                            src={service.image}
-                            alt={service.name}
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-contain group-hover:scale-105 transition-all duration-500"
-                          />
-                          <span className="absolute top-2 right-2 bg-black/60 border border-zinc-800 text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase font-mono tracking-wider text-zinc-400">
-                            {service.category}
-                          </span>
+                    {servicesData
+                      .filter((service) => service.category === selectedCategory)
+                      .map((service) => (
+                        <div
+                          key={service.id}
+                          onClick={() => openTopup(service)}
+                          className="group bg-card-bg rounded-2xl overflow-hidden border border-zinc-900 hover:border-red-600 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] active:scale-95 flex flex-col justify-between"
+                        >
+                          <div className="relative aspect-[4/3] overflow-hidden bg-black/60 flex items-center justify-center p-2 border-b border-zinc-900/40">
+                            <img
+                              src={service.image}
+                              alt={service.name}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-contain group-hover:scale-105 transition-all duration-500"
+                            />
+                          </div>
+                          <div className="p-3 text-center bg-black/10">
+                            <p className="font-bold tracking-wider text-xs text-white group-hover:text-red-500 group-hover:filter group-hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.6)] transition-all">
+                              {service.name}
+                            </p>
+                          </div>
                         </div>
-                        <div className="p-3 text-center bg-black/10">
-                          <p className="font-bold tracking-wider text-xs text-white group-hover:text-brand-orange transition-colors">
-                            {service.name}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 </motion.div>
               )}
@@ -1006,21 +1014,14 @@ export default function App() {
                       Choose Topup Method
                     </span>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono">
+                    <div className="grid grid-cols-1 gap-2 font-mono">
                       {[
-                        { id: "esewa", label: "eSewa", logo: "🟢" },
-                        { id: "khalti", label: "Khalti", logo: "🟣" },
-                        { id: "binance", label: "Binance Pay", logo: "🟡" },
-                        { id: "uaebank", label: "UAE Bank Transfer", logo: "🇦🇪" }
+                        { id: "esewa", label: "eSewa Direct Transfer", logo: "🟢" }
                       ].map(method => (
                         <button
                           key={method.id}
-                          onClick={() => setDepositMethod(method.id as any)}
-                          className={`flex items-center justify-center gap-1.5 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider border cursor-pointer transition-all ${
-                            depositMethod === method.id
-                              ? "bg-brand-orange/10 border-brand-orange text-brand-orange font-black"
-                              : "bg-black/20 border-zinc-900 text-zinc-400 hover:text-white"
-                          }`}
+                          onClick={() => setDepositMethod("esewa")}
+                          className="flex items-center justify-center gap-1.5 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider border cursor-pointer transition-all bg-red-950/45 border-red-600 text-red-500 shadow-[0_0_15px_rgba(220,38,38,0.6)]"
                         >
                           <span>{method.logo}</span>
                           <span>{method.label}</span>
@@ -1031,70 +1032,45 @@ export default function App() {
 
                   {/* QR Display Cards based on selection */}
                   <div className="flex flex-col items-center space-y-4 py-3">
-                    {depositMethod === "uaebank" ? (
-                      <div className="bg-black/30 border border-zinc-900 rounded-3xl p-6 text-center max-w-sm space-y-4">
-                        <div className="w-14 h-14 bg-brand-orange/10 rounded-full flex items-center justify-center text-brand-orange mx-auto">
-                          🇦🇪
-                        </div>
-                        <h4 className="font-orbitron font-extrabold text-sm text-white uppercase tracking-widest">UAE Bank Details</h4>
-                        <p className="text-xs text-zinc-400 leading-relaxed font-mono">
-                          Direct AED bank transfer details are available on request. Please contact our support team on WhatsApp to load your wallet coordinates.
-                        </p>
-                        <a
-                          href="https://wa.me/9779827679425?text=Hello%20BNY%20Shop%2C%20I%20want%20to%20deposit%20via%20UAE%20Bank"
-                          target="_blank"
-                          className="inline-block bg-brand-orange text-white px-5 py-2 rounded-xl text-xs font-bold font-mono tracking-wider cursor-pointer uppercase transition-colors"
-                        >
-                          Text on WhatsApp
-                        </a>
+                    <>
+                      <div className="bg-white p-2.5 rounded-2xl border-4 border-red-600 shadow-[0_0_25px_rgba(220,38,38,0.45)] aspect-square w-52 h-52 flex items-center justify-center relative overflow-hidden">
+                        <img
+                          id="qr-display"
+                          src="https://i.ibb.co/8nFCFgqw/WA-1772424062040.jpg" // eSewa QR
+                          alt="Payment QR Code"
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-contain"
+                        />
                       </div>
-                    ) : (
-                      <>
-                        <div className="bg-white p-2.5 rounded-2xl border-4 border-brand-blue shadow-[0_0_25px_rgba(0,102,204,0.15)] aspect-square w-52 h-52 flex items-center justify-center relative overflow-hidden">
-                          <img
-                            id="qr-display"
-                            src={
-                              depositMethod === "esewa"
-                                ? "https://i.ibb.co/8nFCFgqw/WA-1772424062040.jpg" // Existing eSewa QR
-                                : depositMethod === "khalti"
-                                ? "https://i.ibb.co/8nFCFgqw/WA-1772424062040.jpg" // Fallback QR for Khalti as specified
-                                : "https://i.ibb.co/YF8r8tWk/binance-qr.png" // Generate/Show Binance ID QR
-                            }
-                            alt="Payment QR Code"
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
 
-                        <div className="text-center space-y-1.5 font-mono">
-                          <p className="text-zinc-400 text-xs uppercase tracking-wider">
-                            {depositMethod === "binance" ? "Official Binance Pay ID" : "Manual Transfer Coordinates"}
-                          </p>
-                          <div className="flex items-center justify-center gap-2 mt-1">
-                            <b className="text-brand-orange text-lg tracking-wider">
-                              {depositMethod === "binance" ? "1107605273" : "9827679425"}
-                            </b>
-                            <button
-                              onClick={() => copyToClipboard(depositMethod === "binance" ? "1107605273" : "9827679425", "esewa")}
-                              className="bg-zinc-900 hover:bg-zinc-800 p-1.5 rounded-lg text-brand-orange hover:text-white border border-zinc-800 cursor-pointer transition-colors"
-                              title="Copy ID"
-                            >
-                              {copiedEsewa ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                            </button>
-                          </div>
-                          
-                          <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">
-                            Account Holder Name: <strong className="text-white">ANIL</strong>
-                          </p>
-
-                          {copiedEsewa && (
-                            <p className="text-emerald-500 text-[10px] font-bold uppercase tracking-wider animate-pulse font-sans">
-                              ID Copied to clipboard!
-                            </p>
-                          )}
+                      <div className="text-center space-y-1.5 font-mono">
+                        <p className="text-zinc-400 text-xs uppercase tracking-wider">
+                          Manual Transfer Coordinates
+                        </p>
+                        <div className="flex items-center justify-center gap-2 mt-1">
+                          <b className="text-red-500 text-lg tracking-wider filter drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">
+                            9827679425
+                          </b>
+                          <button
+                            onClick={() => copyToClipboard("9827679425", "esewa")}
+                            className="bg-zinc-900 hover:bg-zinc-800 p-1.5 rounded-lg text-red-500 hover:text-white border border-zinc-800 cursor-pointer transition-colors shadow-[0_0_8px_rgba(220,38,38,0.2)]"
+                            title="Copy ID"
+                          >
+                            {copiedEsewa ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
                         </div>
-                      </>
-                    )}
+                        
+                        <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">
+                          Account Holder Name: <strong className="text-white">ANIL</strong>
+                        </p>
+
+                        {copiedEsewa && (
+                          <p className="text-emerald-500 text-[10px] font-bold uppercase tracking-wider animate-pulse font-sans">
+                            ID Copied to clipboard!
+                          </p>
+                        )}
+                      </div>
+                    </>
                   </div>
 
                   {/* Deposit Form (As requested: Screenshot uploads are removed, only textual parameters!) */}
@@ -1274,7 +1250,7 @@ export default function App() {
                               }}
                               className={`p-4 rounded-2xl border text-center cursor-pointer transition-all duration-300 ${
                                 selectedPkg?.n === pkg.n
-                                  ? "bg-brand-blue/10 border-brand-blue shadow-[0_0_15px_rgba(0,102,204,0.15)]"
+                                  ? "bg-red-950/45 border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.6)] scale-102"
                                   : "bg-black/20 border-zinc-900 hover:border-zinc-800"
                               }`}
                             >
@@ -1391,8 +1367,10 @@ export default function App() {
                 setFieldsState({});
                 setActiveSection("home");
               }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-                activeSection === "home" || activeSection === "topup" ? "text-brand-orange" : "text-zinc-600 hover:text-white"
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-300 ${
+                activeSection === "home" || activeSection === "topup" 
+                  ? "text-red-500 font-extrabold filter drop-shadow-[0_0_8px_rgba(239,68,68,0.85)] scale-105" 
+                  : "text-zinc-600 hover:text-white"
               }`}
             >
               <Home className="w-5 h-5" />
@@ -1401,8 +1379,10 @@ export default function App() {
 
             <button
               onClick={() => setActiveSection("wallet")}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-                activeSection === "wallet" ? "text-brand-orange" : "text-zinc-600 hover:text-white"
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-300 ${
+                activeSection === "wallet" 
+                  ? "text-red-500 font-extrabold filter drop-shadow-[0_0_8px_rgba(239,68,68,0.85)] scale-105" 
+                  : "text-zinc-600 hover:text-white"
               }`}
             >
               <Wallet className="w-5 h-5" />
@@ -1411,8 +1391,10 @@ export default function App() {
 
             <button
               onClick={() => setActiveSection("history")}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-                activeSection === "history" ? "text-brand-orange" : "text-zinc-600 hover:text-white"
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-300 ${
+                activeSection === "history" 
+                  ? "text-red-500 font-extrabold filter drop-shadow-[0_0_8px_rgba(239,68,68,0.85)] scale-105" 
+                  : "text-zinc-600 hover:text-white"
               }`}
             >
               <HistoryIcon className="w-5 h-5" />
@@ -1424,8 +1406,10 @@ export default function App() {
                 setProfileActiveTab("menu");
                 setActiveSection("profile");
               }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-                activeSection === "profile" ? "text-brand-orange" : "text-zinc-600 hover:text-white"
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-300 ${
+                activeSection === "profile" 
+                  ? "text-red-500 font-extrabold filter drop-shadow-[0_0_8px_rgba(239,68,68,0.85)] scale-105" 
+                  : "text-zinc-600 hover:text-white"
               }`}
             >
               <UserIcon className="w-5 h-5" />
@@ -1436,13 +1420,15 @@ export default function App() {
             {isAdmin && (
               <button
                 onClick={() => setActiveSection("admin")}
-                className={`flex flex-col items-center gap-1 cursor-pointer transition-colors relative ${
-                  activeSection === "admin" ? "text-brand-blue" : "text-zinc-600 hover:text-brand-blue"
+                className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-300 relative ${
+                  activeSection === "admin" 
+                    ? "text-red-500 font-extrabold filter drop-shadow-[0_0_8px_rgba(239,68,68,0.85)] scale-105" 
+                    : "text-zinc-600 hover:text-red-500"
                 }`}
               >
                 <ShieldCheck className="w-5 h-5 animate-pulse" />
                 <span className="text-[10px] font-bold uppercase tracking-wider">Admin</span>
-                <span className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full bg-brand-orange animate-ping"></span>
+                <span className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
               </button>
             )}
           </nav>
