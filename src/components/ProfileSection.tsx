@@ -10,7 +10,6 @@ import {
   Coins,
   ShoppingCart,
   Heart,
-  Gift,
   Bell,
   HelpCircle,
   Settings,
@@ -27,7 +26,9 @@ import {
   CheckCircle2,
   Copy,
   Check,
-  DollarSign
+  DollarSign,
+  Gift,
+  ExternalLink
 } from "lucide-react";
 import { UserData } from "../types";
 
@@ -76,500 +77,745 @@ export default function ProfileSection({
   historySubTab,
   setHistorySubTab
 }: ProfileSectionProps) {
-  const [profileSubView, setProfileSubView] = useState<string | null>(null);
+  // Navigation active tab (History is selected by default as requested)
+  const [activeTab, setActiveTab] = useState<
+    "history" | "overview" | "favorites" | "notifications" | "support" | "refer" | "policies"
+  >("history");
+
+  // Selected policy active subtab
+  const [activePolicy, setActivePolicy] = useState<"terms" | "refund" | "cancellation" | "privacy">("terms");
+
+  // Expanded card tracking inside History lists for showcasing full details
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [expandedDeposit, setExpandedDeposit] = useState<string | null>(null);
+
+  // List of navigation items for the left side menu
+  interface NavItem {
+    id: "history" | "overview" | "favorites" | "notifications" | "support" | "refer" | "policies";
+    label: string;
+    icon: React.ComponentType<any>;
+    badge?: number;
+  }
+
+  const navItems: NavItem[] = [
+    { id: "history", label: "History", icon: ShoppingCart, badge: userOrders.length },
+    { id: "overview", label: "Overview", icon: UserIcon },
+    { id: "favorites", label: "Favorites", icon: Heart },
+    { id: "notifications", label: "Notices", icon: Bell, badge: systemNotifications.length },
+    { id: "support", label: "Support Chat", icon: MessageSquare, badge: userTickets.filter(t => t.status === "open").length },
+    { id: "refer", label: "Refer & Earn", icon: Gift },
+    { id: "policies", label: "Policies", icon: FileText }
+  ];
+
+  // Helper to trigger support message setup for a specific order inquiry
+  const handleOrderInquiry = (order: any) => {
+    const trackingId = `ORD-${order.id.slice(0, 8).toUpperCase()}`;
+    setSupportTopic(`Inquiry about ${order.game} Order ${trackingId}`);
+    setSupportMessage(
+      `Hello team, I have a question regarding my order of ${order.packageName} for game ${order.game}.\nOrder ID: ${trackingId}\nPlayer UID: ${order.playerUid}\nPrice: RS ${order.price}\nStatus: ${order.status.toUpperCase()}`
+    );
+    setActiveTab("support");
+  };
 
   return (
     <div className="space-y-6">
-      <AnimatePresence mode="wait">
-        {profileSubView === null ? (
-          <motion.div
-            key="profile-menu"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-5"
+      {/* Upper header dashboard bar with back to home button */}
+      <div className="flex items-center justify-between border-b border-zinc-900 pb-4 mb-2">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActiveSection("home")}
+            className="p-2 hover:bg-zinc-900 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            title="Go back to Home"
           >
-            {/* Header with back button */}
-            <div className="flex items-center gap-3 border-b border-zinc-900 pb-4 mb-2">
-              <button
-                onClick={() => setActiveSection("home")}
-                className="p-2 hover:bg-zinc-900 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <div className="flex items-center gap-2">
-                <UserIcon className="w-5 h-5 text-red-600" />
-                <h2 className="font-orbitron text-xl font-bold tracking-wide text-white">Profile</h2>
-              </div>
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-2">
+            <UserIcon className="w-5 h-5 text-red-600" />
+            <h2 className="font-orbitron text-xl font-bold tracking-wide text-white uppercase">Profile Dashboard</h2>
+          </div>
+        </div>
+        
+        {/* Verification indicator badge */}
+        <div className="flex items-center gap-1.5 bg-red-950/40 text-red-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-red-900/40">
+          <ShieldCheck className="w-3.5 h-3.5 animate-pulse" />
+          <span>VERIFIED PLAYER</span>
+        </div>
+      </div>
+
+      {/* Main split dual-column responsive layout */}
+      <div className="flex flex-col md:flex-row gap-6 min-h-[550px]">
+        
+        {/* LEFT COLUMN: NAVIGATION & PROFILE CARD */}
+        <div className="w-full md:w-64 flex-shrink-0 space-y-4">
+          
+          {/* Top profile header panel widget */}
+          <div className="bg-gradient-to-b from-[#121212] to-[#0a0a0a] rounded-2xl border border-zinc-900 p-4 flex items-center gap-3.5 relative overflow-hidden shadow-md">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-red-600/5 rounded-full blur-2xl"></div>
+            
+            {/* Avatar container */}
+            <div className="w-12 h-12 rounded-full border-2 border-red-600 flex items-center justify-center bg-red-950/20 text-red-500 relative flex-shrink-0">
+              <UserIcon className="w-6 h-6 text-white" />
             </div>
 
-            {/* Profile Info Header Card (from screenshot) */}
-            <div className="bg-gradient-to-b from-zinc-900/60 to-black rounded-3xl border border-zinc-800/80 p-6 flex items-center justify-between gap-4 relative overflow-hidden shadow-lg">
-              <div className="flex items-center gap-4 min-w-0">
-                {/* Circle user icon */}
-                <div className="w-16 h-16 rounded-full border-2 border-red-600/60 flex items-center justify-center bg-red-950/20 text-red-500 relative flex-shrink-0">
-                  <UserIcon className="w-8 h-8" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-orbitron font-extrabold text-lg text-white tracking-wide truncate">
-                    {userData?.name ?? "Guest Gamer"}
-                  </h3>
-                  <p className="text-zinc-500 text-xs font-mono truncate">{userData?.email ?? "guest@bnytopup.com"}</p>
-                  
-                  {/* Points display */}
-                  <div className="flex items-center gap-1.5 text-red-500 font-bold text-xs mt-1 bg-red-950/30 px-2.5 py-0.5 rounded-full w-fit border border-red-900/20">
-                    <Coins className="w-3.5 h-3.5" />
-                    <span>{userData?.balance ?? 0} Points</span>
-                  </div>
-                </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-orbitron font-extrabold text-sm text-white tracking-wide truncate">
+                {userData?.name ?? "Guest Gamer"}
+              </h3>
+              <p className="text-zinc-500 text-[10px] font-mono truncate">{userData?.email ?? "guest@bnytopup.com"}</p>
+              
+              {/* Point stats display */}
+              <div className="flex items-center gap-1.5 text-red-500 font-bold text-[10px] mt-1 bg-red-950/30 px-2 py-0.5 rounded-full w-fit border border-red-900/20">
+                <Coins className="w-3 h-3" />
+                <span>{userData?.balance ?? 0} Points</span>
               </div>
-
-              {/* Edit button */}
-              <button
-                onClick={() => setProfileSubView("settings")}
-                className="p-3 bg-red-950/20 hover:bg-red-900/30 text-red-500 hover:text-white rounded-2xl border border-red-900/20 transition-all cursor-pointer flex-shrink-0"
-                title="Edit Profile"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
             </div>
+          </div>
 
-            {/* Main Options list (from screenshot) */}
-            <div className="space-y-3">
-              {/* Store Points */}
-              <div
-                onClick={() => setActiveSection("wallet")}
-                className="group bg-zinc-900/40 hover:bg-zinc-900/80 border border-zinc-800/80 hover:border-red-600/30 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all duration-300"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-red-950/30 text-red-500 flex items-center justify-center flex-shrink-0 border border-red-900/20">
-                    <Coins className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white text-sm tracking-wide">Store Points</h4>
-                    <p className="text-zinc-500 text-xs">Balance: RS {userData?.balance ?? 0}</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-red-500 transition-colors" />
-              </div>
-
-              {/* My Orders */}
-              <div
-                onClick={() => {
-                  setHistorySubTab("orders");
-                  setProfileSubView("orders");
-                }}
-                className="group bg-zinc-900/40 hover:bg-zinc-900/80 border border-zinc-800/80 hover:border-red-600/30 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all duration-300"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-950/50 text-zinc-400 flex items-center justify-center flex-shrink-0 border border-zinc-800/60">
-                    <ShoppingCart className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white text-sm tracking-wide">My Orders</h4>
-                    <p className="text-zinc-500 text-xs">Track your purchases</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-red-500 transition-colors" />
-              </div>
-
-              {/* Favorites */}
-              <div
-                onClick={() => setProfileSubView("favorites")}
-                className="group bg-zinc-900/40 hover:bg-zinc-900/80 border border-zinc-800/80 hover:border-red-600/30 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all duration-300"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-950/50 text-zinc-400 flex items-center justify-center flex-shrink-0 border border-zinc-800/60">
-                    <Heart className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white text-sm tracking-wide">Favorites</h4>
-                    <p className="text-zinc-500 text-xs">Your favorite games</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-red-500 transition-colors" />
-              </div>
-
-              {/* Notifications */}
-              <div
-                onClick={() => setProfileSubView("notifications")}
-                className="group bg-zinc-900/40 hover:bg-zinc-900/80 border border-zinc-800/80 hover:border-red-600/30 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all duration-300"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-950/50 text-zinc-400 flex items-center justify-center flex-shrink-0 border border-zinc-800/60">
-                    <Bell className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white text-sm tracking-wide">Notifications</h4>
-                    <p className="text-zinc-500 text-xs">Stay updated</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-red-500 transition-colors" />
-              </div>
-
-              {/* Support Chat */}
-              <div
-                onClick={() => setProfileSubView("support")}
-                className="group bg-zinc-900/40 hover:bg-zinc-900/80 border border-zinc-800/80 hover:border-red-600/30 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all duration-300"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-950/50 text-zinc-400 flex items-center justify-center flex-shrink-0 border border-zinc-800/60">
-                    <MessageSquare className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white text-sm tracking-wide">Support Chat</h4>
-                    <p className="text-zinc-500 text-xs">Chat with our team</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-red-500 transition-colors" />
-              </div>
-
-              {/* Refer & Earn */}
-              <div
-                onClick={() => setProfileSubView("refer")}
-                className="group bg-zinc-900/40 hover:bg-zinc-900/80 border border-zinc-800/80 hover:border-red-600/30 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all duration-300"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-950/50 text-zinc-400 flex items-center justify-center flex-shrink-0 border border-zinc-800/60">
-                    <Gift className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white text-sm tracking-wide">Refer & Earn</h4>
-                    <p className="text-zinc-500 text-xs">Share with friends & earn rewards</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-red-500 transition-colors" />
-              </div>
-
-              {/* Settings */}
-              <div
-                onClick={() => setProfileSubView("settings")}
-                className="group bg-zinc-900/40 hover:bg-zinc-900/80 border border-zinc-800/80 hover:border-red-600/30 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all duration-300"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-950/50 text-zinc-400 flex items-center justify-center flex-shrink-0 border border-zinc-800/60">
-                    <Settings className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white text-sm tracking-wide">Settings</h4>
-                    <p className="text-zinc-500 text-xs">App preferences</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-red-500 transition-colors" />
-              </div>
-
-              {/* LEGAL HEADER */}
-              <div className="pt-4 pb-1 pl-1">
-                <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest pl-2">Legal</span>
-              </div>
-
-              <div className="bg-[#0b0b0b] border border-zinc-900 rounded-2xl overflow-hidden divide-y divide-zinc-900">
-                {/* Terms & Conditions */}
-                <div
-                  onClick={() => setProfileSubView("terms")}
-                  className="group hover:bg-zinc-900/30 p-4 flex items-center justify-between cursor-pointer transition-colors"
+          {/* Navigation vertical list (shown as sidebar on wide screens) */}
+          <div className="hidden md:flex flex-col bg-[#0b0b0b] border border-zinc-900 rounded-2xl p-2 space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    // Reset expanded item states when switching tabs
+                    setExpandedOrder(null);
+                    setExpandedDeposit(null);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer border ${
+                    isActive
+                      ? "bg-red-950/20 text-red-500 border-red-900/50 shadow-[0_0_15px_rgba(255,0,0,0.1)] font-extrabold"
+                      : "text-zinc-400 border-transparent hover:text-white hover:bg-zinc-900/30"
+                  }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <FileText className="w-4 h-4 text-zinc-500 group-hover:text-red-500 transition-colors" />
-                    <span className="text-sm font-semibold text-zinc-300 group-hover:text-white transition-colors">Terms & Conditions</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-red-500 transition-colors" />
-                </div>
+                  <span className="flex items-center gap-2.5">
+                    <Icon className="w-4 h-4" />
+                    {item.label}
+                  </span>
+                  {item.badge ? (
+                    <span className="bg-red-600 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full">
+                      {item.badge}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
 
-                {/* Refund Policy */}
-                <div
-                  onClick={() => setProfileSubView("refund")}
-                  className="group hover:bg-zinc-900/30 p-4 flex items-center justify-between cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <RotateCcw className="w-4 h-4 text-zinc-500 group-hover:text-red-500 transition-colors" />
-                    <span className="text-sm font-semibold text-zinc-300 group-hover:text-white transition-colors">Refund Policy</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-red-500 transition-colors" />
-                </div>
-
-                {/* Cancellation Policy */}
-                <div
-                  onClick={() => setProfileSubView("cancellation")}
-                  className="group hover:bg-zinc-900/30 p-4 flex items-center justify-between cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <XCircle className="w-4 h-4 text-zinc-500 group-hover:text-red-500 transition-colors" />
-                    <span className="text-sm font-semibold text-zinc-300 group-hover:text-white transition-colors">Cancellation Policy</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-red-500 transition-colors" />
-                </div>
-
-                {/* Privacy Policy */}
-                <div
-                  onClick={() => setProfileSubView("privacy")}
-                  className="group hover:bg-zinc-900/30 p-4 flex items-center justify-between cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <ShieldCheck className="w-4 h-4 text-zinc-500 group-hover:text-red-500 transition-colors" />
-                    <span className="text-sm font-semibold text-zinc-300 group-hover:text-white transition-colors">Privacy Policy</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-red-500 transition-colors" />
-                </div>
-              </div>
-
-              {/* Logout button */}
-              <div
+            {/* Logout shortcut link */}
+            <div className="border-t border-zinc-900 my-2 pt-2">
+              <button
                 onClick={handleLogout}
-                className="group bg-red-950/10 hover:bg-red-950/20 border border-red-950/40 hover:border-red-900/60 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all duration-300 mt-6"
+                className="w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider text-red-500 hover:text-red-400 hover:bg-red-950/20 transition-all duration-200 cursor-pointer"
               >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-red-950/30 text-red-500 flex items-center justify-center flex-shrink-0 border border-red-900/20">
-                    <LogOut className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-red-500 text-sm tracking-wide">Logout</h4>
-                    <p className="text-red-900/80 text-xs">Sign out of your account</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-red-900/60 group-hover:text-red-500 transition-colors" />
-              </div>
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
             </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key={profileSubView}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            {/* SUB-VIEWS MANAGER */}
-            {profileSubView === "orders" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 border-b border-zinc-900 pb-4">
-                  <button
-                    onClick={() => setProfileSubView(null)}
-                    className="p-2 hover:bg-zinc-900 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <h2 className="font-orbitron text-xl font-bold tracking-wide text-white">My Orders</h2>
+          </div>
+
+          {/* Horizontal scroll navigation (shown strictly on mobile) */}
+          <div className="flex md:hidden bg-[#0b0b0b] border border-zinc-900 rounded-2xl p-1.5 overflow-x-auto gap-1 no-scrollbar scroll-smooth">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setExpandedOrder(null);
+                    setExpandedDeposit(null);
+                  }}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all duration-200 cursor-pointer border ${
+                    isActive
+                      ? "bg-red-950/30 text-red-500 border-red-900/40 shadow-[0_0_15px_rgba(255,0,0,0.1)]"
+                      : "text-zinc-500 border-transparent hover:text-zinc-300"
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {item.label}
+                  {item.badge ? (
+                    <span className="bg-red-600 text-white text-[8px] font-mono px-1 rounded-full">
+                      {item.badge}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: DYNAMIC PANEL DISPLAY */}
+        <div className="flex-1 bg-[#0c0c0c] border border-zinc-900/80 rounded-2xl p-4 md:p-6 shadow-inner min-h-[450px]">
+          <AnimatePresence mode="wait">
+            
+            {/* 1. HISTORY TAB CONTENT */}
+            {activeTab === "history" && (
+              <motion.div
+                key="history"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-5"
+              >
+                {/* Header title */}
+                <div>
+                  <h3 className="font-orbitron text-md font-bold text-red-500 uppercase tracking-widest">
+                    Transaction History
+                  </h3>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    View detailed track records of your game topup orders and wallet deposits
+                  </p>
                 </div>
 
-                <div className="flex gap-2 border-b border-zinc-900 pb-2">
+                {/* Sub-tab selection filters */}
+                <div className="flex border-b border-zinc-900 bg-zinc-950/40 p-1 rounded-xl gap-1.5 border">
                   <button
                     onClick={() => setHistorySubTab("orders")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                       historySubTab === "orders"
-                        ? "bg-red-600 text-white shadow-[0_0_10px_rgba(255,0,0,0.2)]"
-                        : "text-zinc-500 hover:text-zinc-400 bg-zinc-950/50 border border-zinc-900"
+                        ? "bg-red-600 text-white shadow-[0_0_10px_rgba(255,0,0,0.2)] font-extrabold"
+                        : "text-zinc-500 hover:text-zinc-400 hover:bg-zinc-900/20"
                     }`}
                   >
-                    🎮 Topup Orders ({userOrders.length})
+                    <Gamepad2 className="w-3.5 h-3.5" />
+                    <span>Game Orders ({userOrders.length})</span>
                   </button>
                   <button
                     onClick={() => setHistorySubTab("deposits")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                       historySubTab === "deposits"
-                        ? "bg-red-600 text-white shadow-[0_0_10px_rgba(255,0,0,0.2)]"
-                        : "text-zinc-500 hover:text-zinc-400 bg-zinc-950/50 border border-zinc-900"
+                        ? "bg-red-600 text-white shadow-[0_0_10px_rgba(255,0,0,0.2)] font-extrabold"
+                        : "text-zinc-500 hover:text-zinc-400 hover:bg-zinc-900/20"
                     }`}
                   >
-                    💳 Wallet Deposits ({userDeposits.length})
+                    <Wallet className="w-3.5 h-3.5" />
+                    <span>Deposits ({userDeposits.length})</span>
                   </button>
                 </div>
 
-                {historySubTab === "orders" ? (
-                  <div className="space-y-3.5 max-h-[400px] overflow-y-auto pr-1 no-scrollbar">
-                    {userOrders.length === 0 ? (
-                      <div className="text-center py-10 bg-[#121212]/50 rounded-xl border border-zinc-900 space-y-2">
-                        <Gamepad2 className="w-8 h-8 text-zinc-800 mx-auto" />
-                        <p className="text-zinc-500 text-xs">No game top-up orders found.</p>
+                {/* Main list container */}
+                <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1 no-scrollbar">
+                  
+                  {/* ORDERS FILTER VIEW */}
+                  {historySubTab === "orders" ? (
+                    userOrders.length === 0 ? (
+                      <div className="text-center py-16 bg-[#121212]/30 rounded-xl border border-zinc-900/60 space-y-3">
+                        <Gamepad2 className="w-10 h-10 text-zinc-800 mx-auto" />
+                        <p className="text-zinc-500 text-xs font-medium">No game top-up orders found.</p>
                         <button
-                          onClick={() => {
-                            setActiveSection("home");
-                            setProfileSubView(null);
-                          }}
-                          className="text-red-500 hover:underline font-bold text-xs uppercase cursor-pointer"
+                          onClick={() => setActiveSection("home")}
+                          className="px-4 py-2 bg-red-950/20 border border-red-900/40 hover:bg-red-900/20 text-red-500 hover:text-white rounded-lg text-xs font-extrabold uppercase transition-all cursor-pointer"
                         >
                           Order Instant Credits
                         </button>
                       </div>
                     ) : (
-                      userOrders.map((order) => (
-                        <div
-                          key={order.id}
-                          className="bg-[#121212]/50 border border-zinc-900 p-4 rounded-xl flex justify-between items-center gap-4 text-xs hover:border-red-900/40 transition-colors"
-                        >
-                          <div className="space-y-1.5 min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="bg-red-950/40 text-red-500 font-bold px-2 py-0.5 rounded text-[9px] tracking-wide border border-red-900/40">
-                                {order.game}
-                              </span>
-                              <span className="text-white font-bold">{order.packageName}</span>
-                            </div>
-                            <div className="font-mono text-zinc-400 space-y-0.5 text-[11px]">
-                              <p className="truncate"><span className="text-zinc-600">Player UID:</span> {order.playerUid}</p>
-                              <p className="text-[10px] text-zinc-600">
-                                {new Date(order.timestamp).toLocaleString()}
-                              </p>
-                            </div>
-                          </div>
+                      userOrders.map((order) => {
+                        const trackingId = `ORD-${order.id.slice(0, 8).toUpperCase()}`;
+                        const isExpanded = expandedOrder === order.id;
+                        
+                        return (
+                          <div
+                            key={order.id}
+                            className={`bg-[#121212]/40 border rounded-2xl overflow-hidden transition-all duration-300 ${
+                              isExpanded ? "border-red-600/50 shadow-[0_0_15px_rgba(255,0,0,0.05)] bg-[#121212]/80" : "border-zinc-900 hover:border-zinc-800"
+                            }`}
+                          >
+                            {/* Summary Item Header */}
+                            <div
+                              onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
+                              className="p-4 flex justify-between items-center gap-4 cursor-pointer select-none"
+                            >
+                              <div className="space-y-1 min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="bg-red-950/40 text-red-500 font-extrabold px-2 py-0.5 rounded text-[9px] tracking-wide border border-red-900/40 uppercase">
+                                    {order.game}
+                                  </span>
+                                  <span className="text-white font-bold text-xs truncate">{order.packageName}</span>
+                                </div>
+                                <div className="font-mono text-zinc-500 text-[10px]">
+                                  ID: {trackingId} &bull; {new Date(order.timestamp).toLocaleDateString()}
+                                </div>
+                              </div>
 
-                          <div className="text-right space-y-1.5 flex-shrink-0">
-                            <p className="font-mono font-bold text-white text-sm">RS {order.price}</p>
-                            {order.status === "approved" ? (
-                              <span className="flex items-center gap-1 justify-end text-emerald-500 text-[10px] font-bold uppercase tracking-wider">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> DELIVERED
-                              </span>
-                            ) : order.status === "rejected" ? (
-                              <span className="flex items-center gap-1 justify-end text-red-500 text-[10px] font-bold uppercase tracking-wider">
-                                <XCircle className="w-3.5 h-3.5" /> REJECTED
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1 justify-end text-amber-500 text-[10px] font-bold uppercase tracking-wider animate-pulse">
-                                <Clock className="w-3.5 h-3.5 animate-spin" /> PENDING
-                              </span>
+                              <div className="text-right flex flex-col items-end gap-1.5 flex-shrink-0">
+                                <p className="font-mono font-bold text-white text-xs">RS {order.price}</p>
+                                
+                                {order.status === "approved" ? (
+                                  <span className="flex items-center gap-1 text-emerald-500 text-[9px] font-bold uppercase tracking-wider">
+                                    <CheckCircle2 className="w-3.5 h-3.5" /> DELIVERED
+                                  </span>
+                                ) : order.status === "rejected" ? (
+                                  <span className="flex items-center gap-1 text-red-500 text-[9px] font-bold uppercase tracking-wider">
+                                    <XCircle className="w-3.5 h-3.5" /> REJECTED
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1 text-amber-500 text-[9px] font-bold uppercase tracking-wider animate-pulse">
+                                    <Clock className="w-3.5 h-3.5 animate-spin" /> PENDING
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Detailed Dropdown Body */}
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="border-t border-zinc-900/80 bg-black/40 p-4 space-y-4 text-xs"
+                              >
+                                {/* Key Details Grid */}
+                                <div className="grid grid-cols-2 gap-3 bg-[#0c0c0c] p-3 rounded-xl border border-zinc-900 font-mono">
+                                  <div>
+                                    <span className="text-[10px] text-zinc-500 block uppercase font-bold">Game Title</span>
+                                    <span className="text-white font-bold">{order.game}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] text-zinc-500 block uppercase font-bold">Credits Package</span>
+                                    <span className="text-white font-bold">{order.packageName}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] text-zinc-500 block uppercase font-bold">Player Game UID</span>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="text-red-500 font-extrabold tracking-wide text-xs">{order.playerUid}</span>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          copyToClipboard(order.playerUid, "UID");
+                                        }}
+                                        className="text-zinc-600 hover:text-white cursor-pointer transition-colors"
+                                        title="Copy UID"
+                                      >
+                                        <Copy className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] text-zinc-500 block uppercase font-bold">Purchase Date</span>
+                                    <span className="text-zinc-300 text-[11px]">
+                                      {new Date(order.timestamp).toLocaleString()}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Custom Visual Steps Progress Tracker */}
+                                <div className="space-y-2">
+                                  <span className="text-[9px] text-zinc-500 block uppercase font-bold tracking-wider">
+                                    Delivery Status Track
+                                  </span>
+                                  <div className="grid grid-cols-3 gap-1 relative pt-2">
+                                    {/* Line connector background */}
+                                    <div className="absolute top-4 left-[16.66%] right-[16.66%] h-0.5 bg-zinc-900 -z-10"></div>
+                                    <div
+                                      className={`absolute top-4 left-[16.66%] h-0.5 bg-red-600 -z-10 transition-all duration-500`}
+                                      style={{
+                                        width: order.status === "approved" ? "66.66%" : order.status === "rejected" ? "66.66%" : "33.33%"
+                                      }}
+                                    ></div>
+
+                                    {/* Step 1: Placed */}
+                                    <div className="text-center space-y-1">
+                                      <div className="w-4.5 h-4.5 rounded-full bg-red-600 text-white font-mono text-[9px] font-bold flex items-center justify-center mx-auto shadow-[0_0_8px_rgba(239,68,68,0.4)]">
+                                        1
+                                      </div>
+                                      <span className="text-[9px] text-zinc-400 font-semibold block uppercase">Placed</span>
+                                    </div>
+
+                                    {/* Step 2: Verification */}
+                                    <div className="text-center space-y-1">
+                                      <div
+                                        className={`w-4.5 h-4.5 rounded-full font-mono text-[9px] font-bold flex items-center justify-center mx-auto transition-colors ${
+                                          order.status !== "pending"
+                                            ? "bg-red-600 text-white shadow-[0_0_8px_rgba(239,68,68,0.4)]"
+                                            : "bg-zinc-950 text-amber-500 border border-amber-600/60 animate-pulse"
+                                        }`}
+                                      >
+                                        2
+                                      </div>
+                                      <span className="text-[9px] text-zinc-400 font-semibold block uppercase">Verifying</span>
+                                    </div>
+
+                                    {/* Step 3: Result */}
+                                    <div className="text-center space-y-1">
+                                      <div
+                                        className={`w-4.5 h-4.5 rounded-full font-mono text-[9px] font-bold flex items-center justify-center mx-auto transition-colors ${
+                                          order.status === "approved"
+                                            ? "bg-emerald-600 text-white shadow-[0_0_8px_rgba(16,185,129,0.4)]"
+                                            : order.status === "rejected"
+                                            ? "bg-red-600 text-white"
+                                            : "bg-zinc-950 text-zinc-600 border border-zinc-900"
+                                        }`}
+                                      >
+                                        {order.status === "approved" ? "✓" : order.status === "rejected" ? "✗" : "3"}
+                                      </div>
+                                      <span className="text-[9px] text-zinc-400 font-semibold block uppercase">
+                                        {order.status === "approved" ? "Delivered" : order.status === "rejected" ? "Failed" : "Delivery"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Status explanation & Action Buttons */}
+                                <div className="bg-[#121212]/80 border border-zinc-900 p-3 rounded-xl space-y-2 text-[11px] leading-relaxed text-zinc-400">
+                                  {order.status === "approved" && (
+                                    <p>
+                                      🏆 <strong className="text-emerald-500">Delivered Successfully!</strong> The game credits have been dispatched directly to your player identification count. Please open or restart your game to reflect the updated diamonds/UC.
+                                    </p>
+                                  )}
+                                  {order.status === "rejected" && (
+                                    <p>
+                                      ⚠️ <strong className="text-red-500">Order Rejected.</strong> Our team was unable to process this order. The paid points have been restored to your profile balance. Please verify your UID coordinates and order details again.
+                                    </p>
+                                  )}
+                                  {order.status === "pending" && (
+                                    <p>
+                                      ⌛ <strong className="text-amber-500">Processing...</strong> Our verification staff is confirming your purchase order queue. Estimated delivery time is 5 to 15 minutes.
+                                    </p>
+                                  )}
+
+                                  <div className="flex gap-2 pt-1 font-bold">
+                                    <button
+                                      onClick={() => handleOrderInquiry(order)}
+                                      className="flex-1 bg-red-950/20 hover:bg-red-900/30 text-red-500 hover:text-white border border-red-900/30 py-1.5 rounded-lg text-[10px] uppercase transition-all cursor-pointer flex items-center justify-center gap-1"
+                                    >
+                                      <MessageSquare className="w-3 h-3" /> Ask Support Team
+                                    </button>
+                                    <button
+                                      onClick={() => copyToClipboard(trackingId, "ID")}
+                                      className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 py-1.5 px-3 rounded-lg text-[10px] uppercase transition-all cursor-pointer flex items-center justify-center gap-1"
+                                    >
+                                      <Copy className="w-3 h-3" /> Copy Ref ID
+                                    </button>
+                                  </div>
+                                </div>
+                              </motion.div>
                             )}
                           </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-3.5 max-h-[400px] overflow-y-auto pr-1 no-scrollbar">
-                    {userDeposits.length === 0 ? (
-                      <div className="text-center py-10 bg-[#121212]/50 rounded-xl border border-zinc-900 space-y-2">
-                        <Wallet className="w-8 h-8 text-zinc-800 mx-auto" />
-                        <p className="text-zinc-500 text-xs">No deposit logs registered.</p>
+                        );
+                      })
+                    )
+                  ) : (
+                    // DEPOSITS FILTER VIEW
+                    userDeposits.length === 0 ? (
+                      <div className="text-center py-16 bg-[#121212]/30 rounded-xl border border-zinc-900/60 space-y-3">
+                        <Wallet className="w-10 h-10 text-zinc-800 mx-auto" />
+                        <p className="text-zinc-500 text-xs font-medium">No deposit logs registered.</p>
                         <button
-                          onClick={() => {
-                            setActiveSection("wallet");
-                            setProfileSubView(null);
-                          }}
-                          className="text-red-500 hover:underline font-bold text-xs uppercase cursor-pointer"
+                          onClick={() => setActiveSection("wallet")}
+                          className="px-4 py-2 bg-red-950/20 border border-red-900/40 hover:bg-red-900/20 text-red-500 hover:text-white rounded-lg text-xs font-extrabold uppercase transition-all cursor-pointer"
                         >
-                          Submit deposit proof
+                          Submit Deposit Proof
                         </button>
                       </div>
                     ) : (
-                      userDeposits.map((dep) => (
-                        <div
-                          key={dep.id}
-                          className="bg-[#121212]/50 border border-zinc-900 p-4 rounded-xl flex justify-between items-center gap-4 text-xs hover:border-emerald-900/40 transition-colors"
-                        >
-                          <div className="space-y-1.5 min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <span className="bg-emerald-950/40 text-emerald-500 font-bold px-2 py-0.5 rounded text-[9px] tracking-wide border border-emerald-900/40">
-                                ESEWA
-                              </span>
-                              <span className="text-zinc-500 font-mono text-[10px] truncate">
-                                ID: {dep.trx}
-                              </span>
-                            </div>
-                            <div className="font-mono text-zinc-400 space-y-0.5 text-[11px]">
-                              <p className="truncate"><span className="text-zinc-600">Sender:</span> {dep.senderName}</p>
-                              <p className="text-[10px] text-zinc-600">
-                                {new Date(dep.timestamp).toLocaleString()}
-                              </p>
-                            </div>
-                          </div>
+                      userDeposits.map((dep) => {
+                        const isExpanded = expandedDeposit === dep.id;
+                        return (
+                          <div
+                            key={dep.id}
+                            className={`bg-[#121212]/40 border rounded-2xl overflow-hidden transition-all duration-300 ${
+                              isExpanded ? "border-emerald-600/50 shadow-[0_0_15px_rgba(16,185,129,0.05)] bg-[#121212]/80" : "border-zinc-900 hover:border-zinc-800"
+                            }`}
+                          >
+                            {/* Summary Item Header */}
+                            <div
+                              onClick={() => setExpandedDeposit(isExpanded ? null : dep.id)}
+                              className="p-4 flex justify-between items-center gap-4 cursor-pointer select-none"
+                            >
+                              <div className="space-y-1 min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="bg-emerald-950/40 text-emerald-500 font-extrabold px-2 py-0.5 rounded text-[9px] tracking-wide border border-emerald-900/40 uppercase">
+                                    ESEWA
+                                  </span>
+                                  <span className="text-white font-bold text-xs truncate">Ref ID: {dep.trx}</span>
+                                </div>
+                                <div className="font-mono text-zinc-500 text-[10px]">
+                                  Sender: {dep.senderName} &bull; {new Date(dep.timestamp).toLocaleDateString()}
+                                </div>
+                              </div>
 
-                          <div className="text-right space-y-1.5 flex-shrink-0">
-                            <p className="font-mono font-bold text-emerald-500 text-sm">RS {dep.amount}</p>
-                            {dep.status === "approved" ? (
-                              <span className="flex items-center gap-1 justify-end text-emerald-500 text-[10px] font-bold uppercase tracking-wider">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> APPROVED
-                              </span>
-                            ) : dep.status === "rejected" ? (
-                              <span className="flex items-center gap-1 justify-end text-red-500 text-[10px] font-bold uppercase tracking-wider">
-                                <XCircle className="w-3.5 h-3.5" /> REJECTED
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1 justify-end text-amber-500 text-[10px] font-bold uppercase tracking-wider animate-pulse">
-                                <Clock className="w-3.5 h-3.5" /> VERIFYING
-                              </span>
+                              <div className="text-right flex flex-col items-end gap-1.5 flex-shrink-0">
+                                <p className="font-mono font-bold text-emerald-500 text-xs">RS {dep.amount}</p>
+                                
+                                {dep.status === "approved" ? (
+                                  <span className="flex items-center gap-1 text-emerald-500 text-[9px] font-bold uppercase tracking-wider">
+                                    <CheckCircle2 className="w-3.5 h-3.5" /> APPROVED
+                                  </span>
+                                ) : dep.status === "rejected" ? (
+                                  <span className="flex items-center gap-1 text-red-500 text-[9px] font-bold uppercase tracking-wider">
+                                    <XCircle className="w-3.5 h-3.5" /> REJECTED
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1 text-amber-500 text-[9px] font-bold uppercase tracking-wider animate-pulse">
+                                    <Clock className="w-3.5 h-3.5" /> VERIFYING
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Dropdown Body */}
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="border-t border-zinc-900/80 bg-black/40 p-4 space-y-3.5 text-xs font-mono"
+                              >
+                                <div className="grid grid-cols-2 gap-3 bg-[#0c0c0c] p-3 rounded-xl border border-zinc-900">
+                                  <div>
+                                    <span className="text-[10px] text-zinc-500 block uppercase font-bold">Transaction Code</span>
+                                    <span className="text-white font-bold tracking-wide">{dep.trx}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] text-zinc-500 block uppercase font-bold">Sender Name</span>
+                                    <span className="text-white font-bold truncate block">{dep.senderName}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] text-zinc-500 block uppercase font-bold">Loaded Points</span>
+                                    <span className="text-emerald-500 font-extrabold text-xs">RS {dep.amount}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] text-zinc-500 block uppercase font-bold">Logged Date</span>
+                                    <span className="text-zinc-300 text-[11px] block truncate">
+                                      {new Date(dep.timestamp).toLocaleString()}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="bg-[#121212]/80 border border-zinc-900 p-3 rounded-xl text-[11px] leading-relaxed text-zinc-400">
+                                  {dep.status === "approved" ? (
+                                    <p>
+                                      ✓ <strong className="text-emerald-500">Verification complete!</strong> RS {dep.amount} points have been credited to your profile balance instantly. Thank you for using BNY Topup gateway.
+                                    </p>
+                                  ) : dep.status === "rejected" ? (
+                                    <p>
+                                      ✗ <strong className="text-red-500">Verification failed.</strong> This deposit slip was rejected because our billing team could not trace the eSewa code or sender coordinates. Please verify your screenshot proof or contact support.
+                                    </p>
+                                  ) : (
+                                    <p>
+                                      ⌛ <strong className="text-amber-500">Verification in progress...</strong> Our manual auditing desk is cross-checking this transaction against our eSewa statement. Estimated verification time is usually 5-30 minutes.
+                                    </p>
+                                  )}
+                                </div>
+                              </motion.div>
                             )}
                           </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
+                        );
+                      })
+                    )
+                  )}
+                </div>
+              </motion.div>
             )}
 
-            {profileSubView === "favorites" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 border-b border-zinc-900 pb-4">
-                  <button
-                    onClick={() => setProfileSubView(null)}
-                    className="p-2 hover:bg-zinc-900 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <h2 className="font-orbitron text-xl font-bold tracking-wide text-white">Favorites</h2>
+            {/* 2. OVERVIEW TAB CONTENT */}
+            {activeTab === "overview" && (
+              <motion.div
+                key="overview"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-5"
+              >
+                <div>
+                  <h3 className="font-orbitron text-md font-bold text-red-500 uppercase tracking-widest">
+                    Account Overview
+                  </h3>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    Manage your profile display details and basic account security preferences
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="bg-[#121212]/50 border border-zinc-900 p-5 rounded-2xl space-y-4 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-red-600/5 rounded-full blur-3xl"></div>
+
+                  <div className="flex justify-between items-center border-b border-zinc-900/80 pb-3">
+                    <div>
+                      <span className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-widest block mb-0.5">
+                        Authorized Gamer Card
+                      </span>
+                      <h4 className="font-orbitron font-extrabold text-white tracking-wide text-xs">
+                        SECURE ACCESS AUTHORIZATION
+                      </h4>
+                    </div>
+                    <div className="flex items-center gap-1 bg-red-950/30 text-red-500 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-red-900/40">
+                      <ShieldCheck className="w-3.5 h-3.5 animate-pulse" /> LIVE
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-xs font-mono">
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-zinc-500 font-bold block uppercase">Display Name</span>
+                      <span className="text-white font-extrabold tracking-wide">{userData?.name ?? "..."}</span>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-zinc-500 font-bold block uppercase">Email Address</span>
+                      <span className="text-white truncate block">{userData?.email ?? "..."}</span>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-zinc-500 font-bold block uppercase">Member Level</span>
+                      <span className="text-red-500 font-extrabold tracking-wider flex items-center gap-1">
+                        <Coins className="w-3.5 h-3.5" />
+                        PLATINUM ELITE
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-zinc-500 font-bold block uppercase">Gateway Link</span>
+                      <span className="text-emerald-500 font-bold tracking-wider">ACTIVE</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-black border border-zinc-900 rounded-xl p-3 flex justify-between items-center text-xs font-mono">
+                    <div className="space-y-1">
+                      <span className="text-[9px] text-zinc-500 font-bold block uppercase">Unique Player ID</span>
+                      <span className="text-red-500 font-extrabold tracking-wider">{userData?.uniqueId ?? "PLAYER-UID"}</span>
+                    </div>
+                    <button
+                      onClick={() => copyToClipboard(userData?.uniqueId || "", "ID")}
+                      className="bg-red-950/20 hover:bg-red-900/30 p-2 rounded-lg text-red-500 cursor-pointer transition-colors border border-red-900/30"
+                      title="Copy Unique ID"
+                    >
+                      {copiedId ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Edit forms triggers */}
+                <div className="bg-[#121212]/20 border border-zinc-900 p-4 rounded-xl space-y-3">
+                  <span className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-wider block">
+                    Security Actions
+                  </span>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <button
+                      onClick={openEditModal}
+                      className="flex items-center justify-between px-4 py-3.5 bg-black hover:bg-zinc-900 border border-zinc-900 hover:border-zinc-800 transition-all text-white text-xs font-bold rounded-xl tracking-wide cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Pencil className="w-4 h-4 text-red-500" />
+                        CHANGE DISPLAY NAME
+                      </span>
+                      <span className="text-zinc-600 font-mono text-[10px]">&rarr;</span>
+                    </button>
+
+                    <button
+                      onClick={() => setPassModal(true)}
+                      className="flex items-center justify-between px-4 py-3.5 bg-black hover:bg-zinc-900 border border-zinc-900 hover:border-zinc-800 transition-all text-white text-xs font-bold rounded-xl tracking-wide cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Key className="w-4 h-4 text-red-500" />
+                        CHANGE PASSWORD
+                      </span>
+                      <span className="text-zinc-600 font-mono text-[10px]">&rarr;</span>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* 3. FAVORITES TAB CONTENT */}
+            {activeTab === "favorites" && (
+              <motion.div
+                key="favorites"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-5"
+              >
+                <div>
+                  <h3 className="font-orbitron text-md font-bold text-red-500 uppercase tracking-widest">
+                    My Favorites
+                  </h3>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    Quickly launch purchase gateways for your favorite game titles
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Free fire */}
                   <div
-                    onClick={() => {
-                      openTopup("Free Fire");
-                      setProfileSubView(null);
-                    }}
-                    className="group bg-[#121212] rounded-2xl overflow-hidden border border-zinc-900 hover:border-red-600 transition-all duration-300 cursor-pointer p-4 flex flex-col items-center text-center gap-3"
+                    onClick={() => openTopup("Free Fire")}
+                    className="group bg-[#121212]/40 rounded-2xl p-4 border border-zinc-900 hover:border-red-600 transition-all duration-300 cursor-pointer flex flex-col items-center text-center gap-3 relative overflow-hidden shadow-md"
                   >
-                    <div className="w-16 h-16 rounded-full overflow-hidden border border-zinc-800 bg-black p-1">
+                    <div className="w-14 h-14 rounded-full overflow-hidden border border-zinc-800 bg-black p-1 flex-shrink-0">
                       <img
                         src="https://i.ibb.co/My1kJfTy/IMG-20260302-211532.jpg"
                         alt="Free Fire"
                         className="w-full h-full object-contain"
                       />
                     </div>
-                    <p className="font-bold text-sm text-white group-hover:text-red-500 transition-colors">Free Fire</p>
-                    <span className="text-[10px] text-red-500 font-bold bg-red-950/30 px-2 py-0.5 rounded-full border border-red-900/20">Buy diamonds</span>
+                    <div>
+                      <p className="font-bold text-sm text-white group-hover:text-red-500 transition-colors">Free Fire</p>
+                      <span className="text-[10px] text-zinc-500 font-medium block mt-0.5">Garena Diamond Service</span>
+                    </div>
+                    <span className="text-[10px] text-red-500 font-bold bg-red-950/40 px-3 py-1 rounded-full border border-red-900/30">
+                      BUY DIAMONDS
+                    </span>
                   </div>
 
+                  {/* PUBG Mobile */}
                   <div
-                    onClick={() => {
-                      openTopup("PUBG Mobile");
-                      setProfileSubView(null);
-                    }}
-                    className="group bg-[#121212] rounded-2xl overflow-hidden border border-zinc-900 hover:border-red-600 transition-all duration-300 cursor-pointer p-4 flex flex-col items-center text-center gap-3"
+                    onClick={() => openTopup("PUBG Mobile")}
+                    className="group bg-[#121212]/40 rounded-2xl p-4 border border-zinc-900 hover:border-red-600 transition-all duration-300 cursor-pointer flex flex-col items-center text-center gap-3 relative overflow-hidden shadow-md"
                   >
-                    <div className="w-16 h-16 rounded-full overflow-hidden border border-zinc-800 bg-black p-1">
+                    <div className="w-14 h-14 rounded-full overflow-hidden border border-zinc-800 bg-black p-1 flex-shrink-0">
                       <img
                         src="https://i.ibb.co/jPZjCShd/IMG-20260302-211625.jpg"
                         alt="PUBG Mobile"
                         className="w-full h-full object-contain"
                       />
                     </div>
-                    <p className="font-bold text-sm text-white group-hover:text-red-500 transition-colors">PUBG Mobile</p>
-                    <span className="text-[10px] text-red-500 font-bold bg-red-950/30 px-2 py-0.5 rounded-full border border-red-900/20">Buy UC Cash</span>
+                    <div>
+                      <p className="font-bold text-sm text-white group-hover:text-red-500 transition-colors">PUBG Mobile</p>
+                      <span className="text-[10px] text-zinc-500 font-medium block mt-0.5">UC Cash Services</span>
+                    </div>
+                    <span className="text-[10px] text-red-500 font-bold bg-red-950/40 px-3 py-1 rounded-full border border-red-900/30">
+                      BUY UC CASH
+                    </span>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )}
 
-            {profileSubView === "notifications" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 border-b border-zinc-900 pb-4">
-                  <button
-                    onClick={() => setProfileSubView(null)}
-                    className="p-2 hover:bg-zinc-900 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <h2 className="font-orbitron text-xl font-bold tracking-wide text-white">Notifications</h2>
+            {/* 4. NOTIFICATIONS TAB CONTENT */}
+            {activeTab === "notifications" && (
+              <motion.div
+                key="notifications"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-5"
+              >
+                <div>
+                  <h3 className="font-orbitron text-md font-bold text-red-500 uppercase tracking-widest">
+                    Official notices
+                  </h3>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    Official system bulletins and announcement notices from BNY TOPUP Team
+                  </p>
                 </div>
 
-                <div className="space-y-3.5 max-h-[450px] overflow-y-auto pr-1 no-scrollbar">
+                <div className="space-y-3.5 max-h-[420px] overflow-y-auto pr-1 no-scrollbar">
                   {systemNotifications.length === 0 ? (
-                    <p className="text-zinc-600 text-xs italic text-center py-10 bg-zinc-900/20 rounded-xl border border-zinc-900">
-                      No notices registered at the moment.
+                    <p className="text-zinc-600 text-xs italic text-center py-12 bg-zinc-900/10 rounded-xl border border-zinc-900">
+                      No system notifications at the moment.
                     </p>
                   ) : (
                     systemNotifications.map((notif) => (
                       <div
                         key={notif.id}
-                        className="bg-[#121212]/60 border border-zinc-900 hover:border-zinc-800 p-4 rounded-xl space-y-2.5 transition-all relative overflow-hidden"
+                        className="bg-[#121212]/40 border border-zinc-900 hover:border-zinc-800 p-4 rounded-xl space-y-2.5 transition-all relative overflow-hidden shadow-sm"
                       >
                         {notif.type === "warning" && <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>}
                         {notif.type === "news" && <div className="absolute top-0 left-0 w-1 h-full bg-red-600"></div>}
@@ -589,35 +835,43 @@ export default function ProfileSection({
                     ))
                   )}
                 </div>
-              </div>
+              </motion.div>
             )}
 
-            {profileSubView === "support" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 border-b border-zinc-900 pb-4">
-                  <button
-                    onClick={() => setProfileSubView(null)}
-                    className="p-2 hover:bg-zinc-900 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <h2 className="font-orbitron text-xl font-bold tracking-wide text-white">Support Chat</h2>
+            {/* 5. SUPPORT TAB CONTENT */}
+            {activeTab === "support" && (
+              <motion.div
+                key="support"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-5"
+              >
+                <div>
+                  <h3 className="font-orbitron text-md font-bold text-red-500 uppercase tracking-widest">
+                    Support Desk
+                  </h3>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    Submit verified support ticket claims regarding order delivery, refunds, or wallet balance
+                  </p>
                 </div>
 
-                <form onSubmit={submitSupportTicket} className="bg-[#121212]/75 border border-zinc-900 p-5 rounded-2xl space-y-4">
+                <form onSubmit={submitSupportTicket} className="bg-[#121212]/50 border border-zinc-900 p-4 rounded-xl space-y-4">
                   <div>
                     <h4 className="font-orbitron font-bold text-red-500 text-xs uppercase tracking-widest border-b border-zinc-900 pb-2">
-                      CREATE SUPPORT TICKET
+                      CREATE INQUIRY CLAIM
                     </h4>
-                    <p className="text-[10px] text-zinc-500 mt-1">Submit dynamic claims to verification team</p>
                   </div>
 
-                  <div className="space-y-3 text-xs">
+                  <div className="space-y-3.5 text-xs">
                     <div>
-                      <label className="text-[10px] text-zinc-400 block mb-1 uppercase tracking-wider">Inquiry Subject</label>
+                      <label className="text-[10px] text-zinc-400 block mb-1 uppercase tracking-wider font-bold">
+                        Subject Topic
+                      </label>
                       <input
                         type="text"
-                        placeholder="e.g. UC package not received"
+                        placeholder="e.g. Free Fire order ORD-FF-839A not credited"
                         value={supportTopic}
                         onChange={(e) => setSupportTopic(e.target.value)}
                         className="w-full bg-black border border-zinc-800 text-white placeholder-zinc-700 px-3.5 py-2.5 rounded-lg focus:outline-none focus:border-red-600 transition-all font-mono text-xs"
@@ -626,9 +880,11 @@ export default function ProfileSection({
                     </div>
 
                     <div>
-                      <label className="text-[10px] text-zinc-400 block mb-1 uppercase tracking-wider">Detailed Message</label>
+                      <label className="text-[10px] text-zinc-400 block mb-1 uppercase tracking-wider font-bold">
+                        Detailed Message
+                      </label>
                       <textarea
-                        placeholder="Provide exact details such as transaction ID, UID number, etc."
+                        placeholder="Please supply your transaction reference slip screenshots details, player unique coordinates, and order reference."
                         value={supportMessage}
                         rows={3}
                         onChange={(e) => setSupportMessage(e.target.value)}
@@ -647,25 +903,28 @@ export default function ProfileSection({
                       ) : (
                         <>
                           <Send className="w-3.5 h-3.5" />
-                          SUBMIT HELP TICKET
+                          SUBMIT SECURE HELP CLAIM
                         </>
                       )}
                     </button>
                   </div>
                 </form>
 
+                {/* Tickets list */}
                 <div className="space-y-3">
-                  <h4 className="font-orbitron font-bold text-zinc-500 text-[10px] uppercase tracking-widest pl-1">TICKET HISTORY ({userTickets.length})</h4>
+                  <h4 className="font-orbitron font-bold text-zinc-500 text-[10px] uppercase tracking-widest pl-1">
+                    MY TICKETS HISTORY ({userTickets.length})
+                  </h4>
                   <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1 no-scrollbar">
                     {userTickets.length === 0 ? (
-                      <p className="text-zinc-600 text-[11px] italic text-center py-6 bg-[#121212]/30 rounded-xl border border-zinc-900">
-                        No previous support logs recorded.
+                      <p className="text-zinc-600 text-[11px] italic text-center py-6 bg-[#121212]/10 rounded-xl border border-zinc-900">
+                        No support tickets submitted previously.
                       </p>
                     ) : (
                       userTickets.map((ticket) => (
                         <div
                           key={ticket.id}
-                          className="bg-[#121212]/50 border border-zinc-900 p-3 rounded-xl text-xs space-y-2 hover:border-zinc-800 transition-colors"
+                          className="bg-[#121212]/30 border border-zinc-900 p-3 rounded-xl text-xs space-y-2 hover:border-zinc-800 transition-colors"
                         >
                           <div className="flex justify-between items-center gap-4">
                             <span className="font-bold text-white truncate font-orbitron">{ticket.topic}</span>
@@ -679,7 +938,9 @@ export default function ProfileSection({
                               </span>
                             )}
                           </div>
-                          <p className="text-zinc-400 text-[11px] leading-relaxed font-mono bg-black/40 p-2.5 rounded-lg border border-zinc-900">{ticket.message}</p>
+                          <p className="text-zinc-400 text-[11px] leading-relaxed font-mono bg-black/40 p-2.5 rounded-lg border border-zinc-900">
+                            {ticket.message}
+                          </p>
                           <div className="flex justify-between items-center text-[10px] text-zinc-600 font-mono pt-1">
                             <span>Ref ID: #{ticket.id.slice(1, 6).toUpperCase()}</span>
                             <span>{new Date(ticket.timestamp).toLocaleDateString()}</span>
@@ -689,183 +950,167 @@ export default function ProfileSection({
                     )}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )}
 
-            {profileSubView === "refer" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 border-b border-zinc-900 pb-4">
-                  <button
-                    onClick={() => setProfileSubView(null)}
-                    className="p-2 hover:bg-zinc-900 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <h2 className="font-orbitron text-xl font-bold tracking-wide text-white">Refer & Earn</h2>
+            {/* 6. REFER & EARN TAB CONTENT */}
+            {activeTab === "refer" && (
+              <motion.div
+                key="refer"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-5"
+              >
+                <div>
+                  <h3 className="font-orbitron text-md font-bold text-red-500 uppercase tracking-widest">
+                    Refer & Earn
+                  </h3>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    Invite other gamers to BNY TOPUP and unlock free credit bonuses
+                  </p>
                 </div>
 
-                <div className="bg-[#121212] border border-zinc-900 rounded-2xl p-6 text-center space-y-4">
+                <div className="bg-[#121212]/50 border border-zinc-900 rounded-2xl p-6 text-center space-y-4">
                   <Gift className="w-12 h-12 text-red-500 mx-auto animate-bounce" />
                   <div className="space-y-1">
-                    <h4 className="font-orbitron font-bold text-white uppercase tracking-wider">Share BNY & Earn</h4>
-                    <p className="text-xs text-zinc-400 leading-relaxed">
-                      Invite your gamer friends to join BNY TOPUP. You'll receive 50 Points for every friend who creates an account and completes an order!
+                    <h4 className="font-orbitron font-extrabold text-white uppercase tracking-wider">
+                      SHARE BNY & CLAIM BONUSES
+                    </h4>
+                    <p className="text-xs text-zinc-400 leading-relaxed max-w-md mx-auto">
+                      Invite your gaming circle to join our community. When a referred friend signs up and completes their first game credit purchase, you will receive <strong className="text-red-500">50 Reward Points</strong> credited to your wallet balance instantly!
                     </p>
                   </div>
 
-                  <div className="bg-black border border-zinc-800 rounded-xl p-3 flex justify-between items-center text-xs font-mono mt-2">
-                    <span className="text-red-500 font-bold truncate pr-3">
-                      https://bnytopup.com/ref/{userData?.uniqueId || "PLAYER"}
+                  <div className="bg-black border border-zinc-900 rounded-xl p-3 flex justify-between items-center text-xs font-mono max-w-sm mx-auto">
+                    <span className="text-red-500 font-bold truncate pr-3 select-all">
+                      https://bnytopup.com/ref/{userData?.uniqueId || "GAMER"}
                     </span>
                     <button
-                      onClick={() => copyToClipboard(`https://bnytopup.com/ref/${userData?.uniqueId || "PLAYER"}`, "id")}
+                      onClick={() =>
+                        copyToClipboard(`https://bnytopup.com/ref/${userData?.uniqueId || "GAMER"}`, "ID")
+                      }
                       className="bg-red-950/30 hover:bg-red-900/40 p-2 rounded-lg text-red-500 cursor-pointer transition-all border border-red-900/20"
+                      title="Copy referral link"
                     >
                       {copiedId ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
-                  {copiedId && <p className="text-[10px] text-emerald-500 font-bold">Referral link copied!</p>}
+                  {copiedId && <p className="text-[10px] text-emerald-500 font-bold">Referral code link copied!</p>}
                 </div>
-              </div>
+              </motion.div>
             )}
 
-            {profileSubView === "settings" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 border-b border-zinc-900 pb-4">
-                  <button
-                    onClick={() => setProfileSubView(null)}
-                    className="p-2 hover:bg-zinc-900 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <h2 className="font-orbitron text-xl font-bold tracking-wide text-white">Settings</h2>
+            {/* 7. POLICIES TAB CONTENT */}
+            {activeTab === "policies" && (
+              <motion.div
+                key="policies"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-4"
+              >
+                <div>
+                  <h3 className="font-orbitron text-md font-bold text-red-500 uppercase tracking-widest">
+                    Platform Policies
+                  </h3>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    Read our official terms of service, refund guarantees, and data protection rules
+                  </p>
                 </div>
 
-                <div className="bg-[#121212] border border-zinc-900 p-5 rounded-2xl space-y-4 shadow-sm">
-                  <h4 className="font-orbitron font-bold text-red-500 text-xs uppercase tracking-widest border-b border-zinc-900 pb-2">
-                    SECURITY & PREFERENCES
-                  </h4>
-
-                  <div className="space-y-3.5">
+                {/* Policy Sub tabs */}
+                <div className="flex border-b border-zinc-900 bg-zinc-950/40 p-1 rounded-xl gap-1 border overflow-x-auto no-scrollbar">
+                  {[
+                    { id: "terms", label: "Terms" },
+                    { id: "refund", label: "Refunds" },
+                    { id: "cancellation", label: "Cancel" },
+                    { id: "privacy", label: "Privacy" }
+                  ].map((p) => (
                     <button
-                      onClick={openEditModal}
-                      className="w-full bg-black hover:bg-zinc-900/60 border border-zinc-800 hover:border-zinc-750 transition-all text-white text-xs font-bold py-3.5 rounded-xl tracking-wide flex items-center justify-between px-4 cursor-pointer"
+                      key={p.id}
+                      onClick={() => setActivePolicy(p.id as any)}
+                      className={`flex-1 py-1.5 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+                        activePolicy === p.id
+                          ? "bg-red-950/30 text-red-500 border border-red-900/40 font-extrabold"
+                          : "text-zinc-500 hover:text-zinc-400"
+                      }`}
                     >
-                      <span className="flex items-center gap-2">
-                        <UserIcon className="w-4 h-4 text-red-500" />
-                        CHANGE DISPLAY NAME
-                      </span>
-                      <span className="text-zinc-500 font-mono text-[10px]">{userData?.name} &rarr;</span>
+                      {p.label}
                     </button>
-
-                    <button
-                      onClick={() => setPassModal(true)}
-                      className="w-full bg-black hover:bg-zinc-900/60 border border-zinc-800 hover:border-zinc-750 transition-all text-white text-xs font-bold py-3.5 rounded-xl tracking-wide flex items-center justify-between px-4 cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Key className="w-4 h-4 text-red-500" />
-                        CHANGE ACCESS PASSWORD
-                      </span>
-                      <span className="text-zinc-500 font-mono text-[10px]">Secure &rarr;</span>
-                    </button>
-                  </div>
+                  ))}
                 </div>
-              </div>
+
+                {/* Interactive Dynamic Policy Content displayer */}
+                <div className="bg-[#121212]/30 border border-zinc-900 p-4 rounded-xl text-xs text-zinc-400 leading-relaxed max-h-[350px] overflow-y-auto no-scrollbar">
+                  {activePolicy === "terms" && (
+                    <div className="space-y-3.5">
+                      <h4 className="font-bold text-white uppercase text-[11px]">1. ACCEPTANCE OF TERMS</h4>
+                      <p>
+                        By registering on BNY TOPUP, you acknowledge and agree that you have read, understood, and accept all policies outlined on our platform.
+                      </p>
+                      
+                      <h4 className="font-bold text-white uppercase text-[11px]">2. IN-GAME CREDITS AND DELIVERIES</h4>
+                      <p>
+                        We supply official credits including Garena Free Fire Diamonds and PUBG Mobile UC. The exact Player UID must be supplied; BNY is not responsible for credits misrouted due to incorrect player numbers entered by users.
+                      </p>
+
+                      <h4 className="font-bold text-white uppercase text-[11px]">3. USER ACCOUNT SECURITY</h4>
+                      <p>
+                        Users are responsible for maintaining the privacy and security of their custom accounts, unique identification codes, and verification records.
+                      </p>
+                    </div>
+                  )}
+
+                  {activePolicy === "refund" && (
+                    <div className="space-y-3.5">
+                      <h4 className="font-bold text-white uppercase text-[11px]">FINAL AND NON-REFUNDABLE DELIVERIES</h4>
+                      <p>
+                        All virtual product purchases, topup orders, and credit recharges are instantly or manually processed through official APIs. Once game credits (Diamonds/UC) have been successfully delivered or credited to your player identification number, they are completely final and non-refundable.
+                      </p>
+                      
+                      <h4 className="font-bold text-white uppercase text-[11px]">ORDER REJECTIONS</h4>
+                      <p>
+                        If an order is rejected due to lack of verification proof, the transaction amount remains in your wallet and can be used for secondary orders, but cannot be withdrawn back to bank/esewa accounts.
+                      </p>
+                    </div>
+                  )}
+
+                  {activePolicy === "cancellation" && (
+                    <div className="space-y-3.5">
+                      <h4 className="font-bold text-white uppercase text-[11px]">PROCESSING SYSTEM CANCELLATION</h4>
+                      <p>
+                        Users may request cancellation of their orders strictly before the order shifts from "PENDING" to "DELIVERED". Once the order has been picked up by the official delivery gateway, cancellation requests are automatically discarded.
+                      </p>
+                      
+                      <h4 className="font-bold text-white uppercase text-[11px]">MANUAL VOID CLAIMS</h4>
+                      <p>
+                        To request a manual void, please submit a detailed ticket in our support portal or get in touch through WhatsApp support immediately.
+                      </p>
+                    </div>
+                  )}
+
+                  {activePolicy === "privacy" && (
+                    <div className="space-y-3.5">
+                      <h4 className="font-bold text-white uppercase text-[11px]">DATA COLLECTION AND INTENT</h4>
+                      <p>
+                        We respect player confidentiality. The primary details gathered are your registered name, transaction reference proof, and player game identification numbers (UIDs). We never store nor request your private social game logins or passwords.
+                      </p>
+                      
+                      <h4 className="font-bold text-white uppercase text-[11px]">SECURE ENCRYPTION</h4>
+                      <p>
+                        All database records are authenticated securely through our persistent Cloud Firestore structure and verified dynamically strictly on authorized access endpoints.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
             )}
-
-            {profileSubView === "terms" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 border-b border-zinc-900 pb-4">
-                  <button
-                    onClick={() => setProfileSubView(null)}
-                    className="p-2 hover:bg-zinc-900 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <h2 className="font-orbitron text-lg font-bold tracking-wide text-white">Terms & Conditions</h2>
-                </div>
-
-                <div className="bg-[#121212] border border-zinc-900 rounded-2xl p-5 space-y-4 text-xs text-zinc-400 leading-relaxed max-h-[400px] overflow-y-auto no-scrollbar">
-                  <h3 className="font-bold text-white text-sm">1. ACCEPTANCE OF TERMS</h3>
-                  <p>By registering on BNY TOPUP, you acknowledge and agree that you have read, understood, and accept all policies outlined on our platform.</p>
-                  
-                  <h3 className="font-bold text-white text-sm">2. IN-GAME CREDITS AND DELIVERIES</h3>
-                  <p>We supply official credits including Garena Free Fire Diamonds and PUBG Mobile UC. The exact Player UID must be supplied; BNY is not responsible for credits misrouted due to incorrect player numbers entered by users.</p>
-
-                  <h3 className="font-bold text-white text-sm">3. USER ACCOUNT SECURITY</h3>
-                  <p>Users are responsible for maintaining the privacy and security of their custom accounts, unique identification codes, and verification records.</p>
-                </div>
-              </div>
-            )}
-
-            {profileSubView === "refund" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 border-b border-zinc-900 pb-4">
-                  <button
-                    onClick={() => setProfileSubView(null)}
-                    className="p-2 hover:bg-zinc-900 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <h2 className="font-orbitron text-lg font-bold tracking-wide text-white">Refund Policy</h2>
-                </div>
-
-                <div className="bg-[#121212] border border-zinc-900 rounded-2xl p-5 space-y-4 text-xs text-zinc-400 leading-relaxed">
-                  <h3 className="font-bold text-white text-sm">FINAL AND NON-REFUNDABLE DELIVERIES</h3>
-                  <p>All virtual product purchases, topup orders, and credit recharges are instantly or manually processed through official APIs. Once game credits (Diamonds/UC) have been successfully delivered or credited to your player identification number, they are completely final and non-refundable.</p>
-                  
-                  <h3 className="font-bold text-white text-sm">ORDER REJECTIONS</h3>
-                  <p>If an order is rejected due to lack of verification proof, the transaction amount remains in your wallet and can be used for secondary orders, but cannot be withdrawn back to bank/esewa accounts.</p>
-                </div>
-              </div>
-            )}
-
-            {profileSubView === "cancellation" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 border-b border-zinc-900 pb-4">
-                  <button
-                    onClick={() => setProfileSubView(null)}
-                    className="p-2 hover:bg-zinc-900 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <h2 className="font-orbitron text-lg font-bold tracking-wide text-white">Cancellation Policy</h2>
-                </div>
-
-                <div className="bg-[#121212] border border-zinc-900 rounded-2xl p-5 space-y-4 text-xs text-zinc-400 leading-relaxed">
-                  <h3 className="font-bold text-white text-sm">PROCESSING SYSTEM CANCELLATION</h3>
-                  <p>Users may request cancellation of their orders strictly before the order shifts from "PENDING" to "DELIVERED". Once the order has been picked up by the official delivery gateway, cancellation requests are automatically discarded.</p>
-                  
-                  <h3 className="font-bold text-white text-sm">MANUAL VOID CLAIMS</h3>
-                  <p>To request a manual void, please submit a detailed ticket in our support portal or get in touch through WhatsApp support immediately.</p>
-                </div>
-              </div>
-            )}
-
-            {profileSubView === "privacy" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 border-b border-zinc-900 pb-4">
-                  <button
-                    onClick={() => setProfileSubView(null)}
-                    className="p-2 hover:bg-zinc-900 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <h2 className="font-orbitron text-lg font-bold tracking-wide text-white">Privacy Policy</h2>
-                </div>
-
-                <div className="bg-[#121212] border border-zinc-900 rounded-2xl p-5 space-y-4 text-xs text-zinc-400 leading-relaxed">
-                  <h3 className="font-bold text-white text-sm">DATA COLLECTION AND INTENT</h3>
-                  <p>We respect player confidentiality. The primary details gathered are your registered name, transaction reference proof, and player game identification numbers (UIDs). We never store nor request your private social game logins or passwords.</p>
-                  
-                  <h3 className="font-bold text-white text-sm">SECURE ENCRYPTION</h3>
-                  <p>All database records are authenticated securely through our persistent Cloud Firestore structure and verified dynamically strictly on authorized access endpoints.</p>
-                </div>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </AnimatePresence>
+        </div>
+      </div>
     </div>
   );
 }
