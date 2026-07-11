@@ -31,7 +31,8 @@ import {
   Image as ImageIcon,
   UserCheck,
   UserX,
-  Upload
+  Upload,
+  ClipboardList
 } from "lucide-react";
 import { ServiceItem, GamePackage } from "../data/packages";
 
@@ -45,7 +46,7 @@ interface AdminSectionProps {
 export default function AdminSection({ db, currentUser, services, setActiveSection }: AdminSectionProps) {
   // Sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [adminTab, setAdminTab] = useState<"dashboard" | "games" | "products" | "qrcode" | "requirements" | "banners">("dashboard");
+  const [adminTab, setAdminTab] = useState<"dashboard" | "orders" | "deposits" | "users" | "games" | "products" | "qrcode" | "requirements" | "banners">("dashboard");
 
   // Dynamic state loaded from DB
   const [dbGames, setDbGames] = useState<any[]>([]);
@@ -768,6 +769,9 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
             </h2>
             <p className="text-[10px] text-zinc-500 font-mono tracking-wider uppercase">
               {adminTab === "dashboard" && "Dashboard Overview"}
+              {adminTab === "orders" && "Fulfill Orders"}
+              {adminTab === "deposits" && "Load Deposits"}
+              {adminTab === "users" && "User Balances"}
               {adminTab === "games" && "Games / Service Title Editor"}
               {adminTab === "products" && "Packages & Price Customizer"}
               {adminTab === "qrcode" && "Payment settings details"}
@@ -836,6 +840,9 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                 <div className="space-y-1.5">
                   {[
                     { id: "dashboard", label: "Dashboard", icon: TrendingUp },
+                    { id: "orders", label: `Orders (${pendingOrdersCount})`, icon: ClipboardList },
+                    { id: "deposits", label: `Deposits (${pendingDepositsCount})`, icon: Wallet },
+                    { id: "users", label: `User Balances (${allUsers.length})`, icon: Users },
                     { id: "games", label: "Games", icon: Database },
                     { id: "products", label: "Products", icon: ShoppingCart },
                     { id: "qrcode", label: "QR Code & Payments", icon: QrCode },
@@ -897,277 +904,462 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
 
         {/* 1. DASHBOARD OVERVIEW */}
         {adminTab === "dashboard" && (
-          <div className="space-y-6">
-            {/* STATISTICS ROW */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <div className="bg-black/30 p-4 border border-zinc-900 rounded-2xl space-y-1">
-                <span className="text-[9px] text-zinc-500 block uppercase font-mono">Total Sales</span>
-                <p className="text-lg font-bold font-mono text-emerald-500">NPR {totalSales}</p>
-                <span className="text-[7px] text-emerald-600 block">From approved dispatches</span>
-              </div>
-
-              <div className="bg-black/30 p-4 border border-zinc-900 rounded-2xl space-y-1">
-                <span className="text-[9px] text-zinc-500 block uppercase font-mono">Total Orders</span>
-                <p className="text-lg font-bold font-mono text-white">{allOrders.length}</p>
-                <span className="text-[7px] text-zinc-500 block">Total system logs</span>
-              </div>
-
-              <div className="bg-black/30 p-4 border border-zinc-900 rounded-2xl space-y-1 relative overflow-hidden">
-                <span className="text-[9px] text-zinc-500 block uppercase font-mono">Pending Deposit</span>
-                <p className="text-lg font-bold font-mono text-blue-400">{pendingDepositsCount}</p>
-                <span className="text-[7px] text-zinc-500 block">Requires verification</span>
-                {pendingDepositsCount > 0 && (
-                  <div className="absolute right-2 top-2 w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping"></div>
-                )}
-              </div>
-
-              <div className="bg-black/30 p-4 border border-zinc-900 rounded-2xl space-y-1 relative overflow-hidden">
-                <span className="text-[9px] text-zinc-500 block uppercase font-mono">Pending Orders</span>
-                <p className="text-lg font-bold font-mono text-red-500">{pendingOrdersCount}</p>
-                <span className="text-[7px] text-zinc-500 block">Needs processing</span>
-                {pendingOrdersCount > 0 && (
-                  <div className="absolute right-2 top-2 w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></div>
-                )}
-              </div>
-
-              <div className="bg-black/30 p-4 border border-zinc-900 rounded-2xl space-y-1 col-span-2 md:col-span-1">
-                <span className="text-[9px] text-zinc-500 block uppercase font-mono">Total Users</span>
-                <p className="text-lg font-bold font-mono text-purple-400">{allUsers.length}</p>
-                <span className="text-[7px] text-zinc-500 block">Registered gamer base</span>
-              </div>
-            </div>
-
-            {/* QUICK ALERTS */}
-            <div className="bg-red-950/20 border border-red-900/35 p-4 rounded-2xl flex gap-3.5 items-start">
-              <AlertTriangle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
-              <div className="text-xs space-y-1">
-                <span className="font-extrabold font-mono text-red-500 uppercase block tracking-wider">
-                  Administrative Pending Task List
-                </span>
-                <p className="text-zinc-400">
-                  There are <strong className="text-white font-bold">{pendingOrdersCount} pending orders</strong> and <strong className="text-white font-bold">{pendingDepositsCount} pending wallet loads</strong> requiring manual verification and delivery.
-                </p>
-              </div>
-            </div>
-
-            {/* DASHBOARD MANAGEMENT TABS */}
-            <div className="flex bg-black/40 border border-zinc-900 p-1 rounded-2xl gap-1 text-[10px] font-mono font-bold uppercase tracking-wider">
-              {[
-                { id: "orders", label: `Fulfill Orders (${pendingOrdersCount})`, color: "border-red-500 text-red-500" },
-                { id: "deposits", label: `Load Deposits (${pendingDepositsCount})`, color: "border-blue-500 text-blue-500" },
-                { id: "users", label: `User Balances (${allUsers.length})`, color: "border-purple-500 text-purple-500" }
-              ].map(sub => (
+          <div className="space-y-8 animate-fadeIn">
+            {/* WELCOME BANNER */}
+            <div className="bg-gradient-to-r from-red-950/20 to-[#0c1322] border border-red-900/20 p-8 rounded-3xl space-y-3 relative overflow-hidden shadow-2xl">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-red-600/5 rounded-full blur-3xl pointer-events-none"></div>
+              <h3 className="font-orbitron font-extrabold text-2xl tracking-widest text-white uppercase">
+                BNY SECURE ADMIN PORTAL
+              </h3>
+              <p className="text-zinc-400 text-xs leading-relaxed max-w-2xl font-sans">
+                Welcome back, administrator. You have full oversight over orders, financial wallet deposits, registered gamers, and system packages. Use the side drawer menu or quick diagnostics shortcuts below to begin processing pending requests.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-2">
                 <button
-                  key={sub.id}
-                  onClick={() => {
-                    setDashboardSubTab(sub.id as any);
-                    setSearchQuery("");
-                  }}
-                  className={`flex-1 text-center py-2.5 rounded-xl cursor-pointer transition-all ${
-                    dashboardSubTab === sub.id
-                      ? "bg-zinc-900 text-white border border-zinc-800"
-                      : "text-zinc-500 hover:text-zinc-300"
-                  }`}
+                  onClick={() => setAdminTab("orders")}
+                  className="bg-red-600 text-white font-mono font-bold text-[10px] uppercase tracking-wider px-4 py-2.5 rounded-xl cursor-pointer hover:bg-red-700 transition-all flex items-center gap-1.5 shadow-lg shadow-red-500/20"
                 >
-                  {sub.label}
+                  <ClipboardList className="w-3.5 h-3.5" />
+                  Process Orders ({pendingOrdersCount})
                 </button>
-              ))}
+                <button
+                  onClick={() => setAdminTab("deposits")}
+                  className="bg-blue-600 text-white font-mono font-bold text-[10px] uppercase tracking-wider px-4 py-2.5 rounded-xl cursor-pointer hover:bg-blue-700 transition-all flex items-center gap-1.5 shadow-lg shadow-blue-500/20"
+                >
+                  <Wallet className="w-3.5 h-3.5" />
+                  Load Deposits ({pendingDepositsCount})
+                </button>
+                <button
+                  onClick={() => setAdminTab("users")}
+                  className="bg-zinc-800 text-zinc-300 font-mono font-bold text-[10px] uppercase tracking-wider px-4 py-2.5 rounded-xl cursor-pointer hover:bg-zinc-700 transition-all flex items-center gap-1.5 border border-zinc-700/50"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  Manage Balances
+                </button>
+              </div>
             </div>
 
-            {/* SUB-TAB CONTENTS */}
-            <div className="space-y-4">
-              {/* SEARCH */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Filter lists..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-black/40 border border-zinc-900 rounded-xl px-10 py-2.5 text-xs font-mono placeholder-zinc-700 text-white focus:outline-none focus:border-red-500"
-                />
+            {/* STATISTICS ROW */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Total Sales Card */}
+              <div className="bg-black/40 p-6 border border-zinc-900/80 rounded-3xl space-y-4 flex flex-col justify-between hover:border-emerald-500/30 hover:shadow-[0_10px_30px_rgba(16,185,129,0.05)] transition-all duration-300">
+                <div className="flex justify-between items-start">
+                  <span className="text-[10px] text-zinc-500 block uppercase font-mono font-extrabold tracking-wider">Total Sales</span>
+                  <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+                    <TrendingUp className="w-5 h-5 text-emerald-500" />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-2xl font-black font-mono text-emerald-500 tracking-tight">NPR {totalSales}</p>
+                  <span className="text-[8px] text-emerald-600 block font-mono uppercase font-bold mt-1">From approved dispatches</span>
+                </div>
               </div>
 
-              {/* ORDERS LIST */}
-              {dashboardSubTab === "orders" && (
-                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 no-scrollbar">
-                  {filteredOrders.length === 0 ? (
-                    <p className="text-center py-10 text-zinc-500 font-mono text-xs">No orders match filter.</p>
-                  ) : (
-                    filteredOrders.map(order => (
-                      <div key={order.orderId} className="bg-black/40 border border-zinc-900/80 rounded-2xl p-4 space-y-3">
-                        <div className="flex justify-between items-start gap-4">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="bg-red-500/10 border border-red-500/20 text-red-500 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">
-                                {order.game}
-                              </span>
-                              <strong className="text-white text-xs">{order.packageName}</strong>
-                            </div>
-                            <p className="text-[9px] text-zinc-500 font-mono mt-0.5">
-                              {new Date(order.timestamp).toLocaleString()} &bull; Code: {order.orderId.slice(0,8).toUpperCase()}
-                            </p>
-                            <p className="text-[10px] text-zinc-400">Gamer: {order.email}</p>
-                          </div>
-                          <div className="text-right">
-                            <strong className="text-white font-mono text-sm">NPR {order.price}</strong>
-                            <span className={`block text-[9px] font-bold uppercase font-mono ${
-                              order.status === "approved" ? "text-emerald-500" : order.status === "rejected" ? "text-red-500" : "text-amber-500 animate-pulse"
-                            }`}>
-                              {order.status}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Order dynamic requirements fields */}
-                        <div className="bg-black/60 border border-zinc-900 rounded-xl p-3 grid grid-cols-2 gap-2 text-[10px] font-mono text-zinc-400">
-                          {order.playerUid && (
-                            <div>
-                              <span className="text-zinc-600 block text-[8px] uppercase">Player UID</span>
-                              <strong className="text-red-500">{order.playerUid}</strong>
-                            </div>
-                          )}
-                          {order.customerEmail && (
-                            <div>
-                              <span className="text-zinc-600 block text-[8px] uppercase">Customer Email</span>
-                              <strong className="text-white">{order.customerEmail}</strong>
-                            </div>
-                          )}
-                          {order.customerPassword && (
-                            <div>
-                              <span className="text-zinc-600 block text-[8px] uppercase">Activation Pass</span>
-                              <strong className="text-white">{order.customerPassword}</strong>
-                            </div>
-                          )}
-                          {order.whatsappNumber && (
-                            <div>
-                              <span className="text-zinc-600 block text-[8px] uppercase">Contact WhatsApp</span>
-                              <strong className="text-white">{order.whatsappNumber}</strong>
-                            </div>
-                          )}
-                        </div>
-
-                        {order.status === "pending" && (
-                          <div className="flex gap-2 font-mono font-bold">
-                            <button
-                              onClick={() => rejectOrder(order)}
-                              className="flex-1 bg-red-950/20 hover:bg-red-900/30 border border-red-900/30 text-red-500 text-[10px] py-2 rounded-lg cursor-pointer"
-                            >
-                              REJECT
-                            </button>
-                            <button
-                              onClick={() => approveOrder(order)}
-                              className="flex-1 bg-red-600 text-white hover:bg-red-700 text-[10px] py-2 rounded-lg cursor-pointer"
-                            >
-                              DISPATCH DELIVERED
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
+              {/* Total Orders Card */}
+              <div className="bg-black/40 p-6 border border-zinc-900/80 rounded-3xl space-y-4 flex flex-col justify-between hover:border-zinc-700 hover:shadow-[0_10px_30px_rgba(255,255,255,0.02)] transition-all duration-300">
+                <div className="flex justify-between items-start">
+                  <span className="text-[10px] text-zinc-500 block uppercase font-mono font-extrabold tracking-wider">Total Orders</span>
+                  <div className="p-2 bg-zinc-800/40 rounded-xl border border-zinc-800">
+                    <ClipboardList className="w-5 h-5 text-white" />
+                  </div>
                 </div>
-              )}
-
-              {/* DEPOSITS LIST */}
-              {dashboardSubTab === "deposits" && (
-                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 no-scrollbar">
-                  {filteredDeposits.length === 0 ? (
-                    <p className="text-center py-10 text-zinc-500 font-mono text-xs">No deposit slips found.</p>
-                  ) : (
-                    filteredDeposits.map(dep => (
-                      <div key={dep.depositId} className="bg-black/40 border border-zinc-900 p-4 rounded-2xl space-y-3.5">
-                        <div className="flex justify-between items-start gap-4">
-                          <div>
-                            <span className="bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">
-                              eSewa / Khalti Load
-                            </span>
-                            <p className="text-[10px] text-white font-mono mt-1">Trx Code: {dep.trx}</p>
-                            <p className="text-[9px] text-zinc-500 font-mono">{new Date(dep.timestamp).toLocaleString()}</p>
-                            <p className="text-[10px] text-zinc-400">Gamer: {dep.email}</p>
-                          </div>
-                          <div className="text-right">
-                            <strong className="text-emerald-500 font-mono text-sm">NPR {dep.amount}</strong>
-                            <span className={`block text-[9px] font-bold uppercase font-mono ${
-                              dep.status === "approved" ? "text-emerald-500" : dep.status === "rejected" ? "text-red-500" : "text-blue-400 animate-pulse"
-                            }`}>
-                              {dep.status}
-                            </span>
-                          </div>
-                        </div>
-
-                        {dep.senderName && (
-                          <p className="text-[10px] font-mono text-zinc-400">Sender: {dep.senderName} ({dep.senderNum || "N/A"})</p>
-                        )}
-
-                        {dep.proofImage && (
-                          <div className="text-center bg-black/60 p-2 border border-zinc-900 rounded-xl">
-                            <img
-                              src={dep.proofImage}
-                              alt="deposit proof"
-                              className="max-h-48 object-contain mx-auto rounded-lg"
-                            />
-                          </div>
-                        )}
-
-                        {dep.status === "pending" && (
-                          <div className="flex gap-2 font-mono font-bold">
-                            <button
-                              onClick={() => rejectDeposit(dep)}
-                              className="flex-1 bg-red-950/20 hover:bg-red-900/30 border border-red-900/30 text-red-500 text-[10px] py-2 rounded-lg cursor-pointer"
-                            >
-                              DECLINE
-                            </button>
-                            <button
-                              onClick={() => approveDeposit(dep)}
-                              className="flex-1 bg-blue-600 text-white hover:bg-blue-700 text-[10px] py-2 rounded-lg cursor-pointer"
-                            >
-                              CONFIRM CREDIT
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
+                <div>
+                  <p className="text-2xl font-black font-mono text-white tracking-tight">{allOrders.length}</p>
+                  <span className="text-[8px] text-zinc-500 block font-mono uppercase font-bold mt-1">Total system logs</span>
                 </div>
-              )}
+              </div>
 
-              {/* USERS LIST */}
-              {dashboardSubTab === "users" && (
-                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 no-scrollbar">
-                  {filteredUsers.length === 0 ? (
-                    <p className="text-center py-10 text-zinc-500 font-mono text-xs">No users match query.</p>
-                  ) : (
-                    filteredUsers.map(u => (
-                      <div key={u.uid} className="bg-black/40 border border-zinc-900 p-4 rounded-2xl flex items-center justify-between gap-4">
+              {/* Pending Deposits Card */}
+              <div className="bg-black/40 p-6 border border-zinc-900/80 rounded-3xl space-y-4 flex flex-col justify-between relative overflow-hidden hover:border-blue-500/30 hover:shadow-[0_10px_30px_rgba(59,130,246,0.05)] transition-all duration-300">
+                <div className="flex justify-between items-start">
+                  <span className="text-[10px] text-zinc-500 block uppercase font-mono font-extrabold tracking-wider">Pending Deposits</span>
+                  <div className="p-2 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                    <Wallet className="w-5 h-5 text-blue-400" />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-2xl font-black font-mono text-blue-400 tracking-tight">{pendingDepositsCount}</p>
+                  <span className="text-[8px] text-zinc-500 block font-mono uppercase font-bold mt-1">Requires audit</span>
+                </div>
+                {pendingDepositsCount > 0 && (
+                  <div className="absolute right-3 top-3 w-2.5 h-2.5 rounded-full bg-blue-500 animate-ping"></div>
+                )}
+              </div>
+
+              {/* Pending Orders Card */}
+              <div className="bg-black/40 p-6 border border-zinc-900/80 rounded-3xl space-y-4 flex flex-col justify-between relative overflow-hidden hover:border-red-500/30 hover:shadow-[0_10px_30px_rgba(239,68,68,0.05)] transition-all duration-300">
+                <div className="flex justify-between items-start">
+                  <span className="text-[10px] text-zinc-500 block uppercase font-mono font-extrabold tracking-wider">Pending Orders</span>
+                  <div className="p-2 bg-red-500/10 rounded-xl border border-red-500/20">
+                    <ShoppingCart className="w-5 h-5 text-red-500" />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-2xl font-black font-mono text-red-500 tracking-tight">{pendingOrdersCount}</p>
+                  <span className="text-[8px] text-zinc-500 block font-mono uppercase font-bold mt-1">Needs delivery</span>
+                </div>
+                {pendingOrdersCount > 0 && (
+                  <div className="absolute right-3 top-3 w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></div>
+                )}
+              </div>
+
+              {/* Total Users Card */}
+              <div className="bg-black/40 p-6 border border-zinc-900/80 rounded-3xl space-y-4 flex flex-col justify-between hover:border-purple-500/30 hover:shadow-[0_10px_30px_rgba(168,85,247,0.05)] transition-all duration-300">
+                <div className="flex justify-between items-start">
+                  <span className="text-[10px] text-zinc-500 block uppercase font-mono font-extrabold tracking-wider">Total Users</span>
+                  <div className="p-2 bg-purple-500/10 rounded-xl border border-purple-500/20">
+                    <Users className="w-5 h-5 text-purple-400" />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-2xl font-black font-mono text-purple-400 tracking-tight">{allUsers.length}</p>
+                  <span className="text-[8px] text-zinc-500 block font-mono uppercase font-bold mt-1">Gamer userbase</span>
+                </div>
+              </div>
+            </div>
+
+            {/* LIVE SYSTEM TELEMETRY */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div className="bg-black/20 border border-zinc-900 p-6 rounded-3xl space-y-3">
+                <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400">
+                  SYSTEM OVERVIEW
+                </h4>
+                <div className="space-y-2 text-xs font-mono text-zinc-400">
+                  <div className="flex justify-between border-b border-zinc-900 pb-2">
+                    <span>Database Connection</span>
+                    <strong className="text-emerald-500 font-bold">ONLINE (REALTIME)</strong>
+                  </div>
+                  <div className="flex justify-between border-b border-zinc-900 pb-2">
+                    <span>Active Services / Games</span>
+                    <strong className="text-white font-bold">{services.length} Enabled</strong>
+                  </div>
+                  <div className="flex justify-between border-b border-zinc-900 pb-2">
+                    <span>Authentication Mode</span>
+                    <strong className="text-white font-bold">Secure Firebase Auth</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Server Local Time</span>
+                    <strong className="text-white font-bold">{new Date().toLocaleTimeString()}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-black/20 border border-zinc-900 p-6 rounded-3xl space-y-3">
+                <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400">
+                  ADMINISTRATIVE TIPS
+                </h4>
+                <ul className="list-disc pl-4 text-xs text-zinc-500 space-y-2 leading-relaxed">
+                  <li>To load wallet credits instantly, head over to the <strong className="text-zinc-300">Deposits</strong> tab to audit payment screenshots.</li>
+                  <li>Provide precise UID delivery for Garena & PUBG orders, then hit <strong className="text-zinc-300">DISPATCH DELIVERED</strong>.</li>
+                  <li>Keep player payment rates competitive using the <strong className="text-zinc-300">Products</strong> price customizer.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 1.1 ORDERS SECTION (FIRST-CLASS TAB) */}
+        {adminTab === "orders" && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h3 className="font-orbitron font-extrabold text-lg uppercase tracking-widest text-white flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-red-500" /> Fulfill Orders
+              </h3>
+
+              {/* FILTER BAR */}
+              <div className="flex bg-black/40 border border-zinc-900 p-1 rounded-2xl gap-1 text-[9px] font-mono font-bold uppercase tracking-wider">
+                {[
+                  { id: "pending", label: `Pending (${pendingOrdersCount})` },
+                  { id: "approved", label: "Approved" },
+                  { id: "rejected", label: "Rejected" },
+                  { id: "all", label: "All Logs" }
+                ].map(sub => (
+                  <button
+                    key={sub.id}
+                    onClick={() => setOrderFilter(sub.id as any)}
+                    className={`px-3 py-2 rounded-xl cursor-pointer transition-all ${
+                      orderFilter === sub.id
+                        ? "bg-red-600 text-white shadow-lg shadow-red-500/20"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    {sub.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* SEARCH */}
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-4.5 h-4.5" />
+              <input
+                type="text"
+                placeholder="Search orders by Player UID, email, game or package name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-black/50 border border-zinc-900 rounded-2xl px-12 py-3.5 text-xs font-mono placeholder-zinc-700 text-white focus:outline-none focus:border-red-500 transition-all shadow-inner"
+              />
+            </div>
+
+            {/* ORDERS SCROLLABLE GRID */}
+            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 no-scrollbar">
+              {filteredOrders.length === 0 ? (
+                <div className="text-center py-20 bg-black/20 border border-zinc-900/50 rounded-3xl">
+                  <p className="text-zinc-500 font-mono text-xs">No orders match the current filter.</p>
+                </div>
+              ) : (
+                filteredOrders.map(order => (
+                  <div key={order.orderId} className="bg-[#0c1322] border border-zinc-900 hover:border-zinc-800 rounded-3xl p-6 space-y-4 transition-all duration-300 shadow-xl">
+                    <div className="flex justify-between items-start gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="bg-red-500/10 border border-red-500/20 text-red-500 text-[8px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-wider">
+                            {order.game}
+                          </span>
+                          <strong className="text-white text-sm">{order.packageName}</strong>
+                        </div>
+                        <p className="text-[9px] text-zinc-500 font-mono mt-1.5">
+                          Date: {new Date(order.timestamp).toLocaleString()} &bull; Order ID: <span className="text-zinc-400 font-bold">{order.orderId.toUpperCase()}</span>
+                        </p>
+                        <p className="text-[11px] text-zinc-400 mt-0.5">User Email: <strong className="text-zinc-300 font-mono">{order.email}</strong></p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <strong className="text-white font-mono text-base block">NPR {order.price}</strong>
+                        <span className={`inline-block text-[9px] font-bold uppercase font-mono px-2 py-0.5 rounded-full mt-1 ${
+                          order.status === "approved" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : order.status === "rejected" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse"
+                        }`}>
+                          {order.status}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Order Requirements details block */}
+                    <div className="bg-black/40 border border-zinc-900 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono text-zinc-400">
+                      {order.playerUid && (
                         <div>
-                          <div className="flex items-center gap-2">
-                            <strong className="text-white text-xs">{u.name}</strong>
-                            <span className="text-[8px] text-zinc-500 font-mono">({u.uniqueId || "N/A"})</span>
-                          </div>
-                          <p className="text-[10px] text-zinc-500 font-mono">{u.email}</p>
-                          <p className="text-[10px] text-red-400 font-mono">Credits: NPR {u.balance ?? 0}</p>
+                          <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Player UID</span>
+                          <strong className="text-red-500 text-sm tracking-widest">{order.playerUid}</strong>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setSelectedUser(u)}
-                            className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] px-3 py-1.5 rounded-lg cursor-pointer font-bold font-mono"
-                          >
-                            BALANCE
-                          </button>
-                          <button
-                            onClick={() => toggleBlockUser(u)}
-                            className={`p-1.5 rounded-lg border text-xs cursor-pointer ${
-                              u.blocked ? "bg-red-900/20 text-red-500 border-red-900" : "bg-zinc-900 text-zinc-500 border-zinc-800"
-                            }`}
-                          >
-                            {u.blocked ? "BLOCKED" : "BLOCK"}
-                          </button>
+                      )}
+                      {order.customerEmail && (
+                        <div>
+                          <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Customer Game Email</span>
+                          <strong className="text-white text-xs">{order.customerEmail}</strong>
                         </div>
+                      )}
+                      {order.customerPassword && (
+                        <div>
+                          <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Activation Password</span>
+                          <strong className="text-white text-xs">{order.customerPassword}</strong>
+                        </div>
+                      )}
+                      {order.whatsappNumber && (
+                        <div>
+                          <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Contact WhatsApp</span>
+                          <strong className="text-white text-xs">{order.whatsappNumber}</strong>
+                        </div>
+                      )}
+                    </div>
+
+                    {order.status === "pending" && (
+                      <div className="flex gap-3 font-mono font-bold">
+                        <button
+                          onClick={() => rejectOrder(order)}
+                          className="flex-1 bg-red-950/20 hover:bg-red-900/30 border border-red-900/30 text-red-500 text-[11px] py-3 rounded-xl cursor-pointer uppercase tracking-wider transition-all"
+                        >
+                          REJECT ORDER
+                        </button>
+                        <button
+                          onClick={() => approveOrder(order)}
+                          className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-500 hover:to-red-600 text-[11px] py-3 rounded-xl cursor-pointer uppercase tracking-wider transition-all shadow-lg shadow-red-500/20"
+                        >
+                          DISPATCH DELIVERED
+                        </button>
                       </div>
-                    ))
-                  )}
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 1.2 DEPOSITS SECTION (FIRST-CLASS TAB) */}
+        {adminTab === "deposits" && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h3 className="font-orbitron font-extrabold text-lg uppercase tracking-widest text-white flex items-center gap-2">
+                <Wallet className="w-5 h-5 text-blue-500" /> Load Deposits
+              </h3>
+
+              {/* DEPOSIT FILTER BAR */}
+              <div className="flex bg-black/40 border border-zinc-900 p-1 rounded-2xl gap-1 text-[9px] font-mono font-bold uppercase tracking-wider">
+                {[
+                  { id: "pending", label: `Pending (${pendingDepositsCount})` },
+                  { id: "approved", label: "Approved" },
+                  { id: "rejected", label: "Rejected" },
+                  { id: "all", label: "All Logs" }
+                ].map(sub => (
+                  <button
+                    key={sub.id}
+                    onClick={() => setDepositFilter(sub.id as any)}
+                    className={`px-3 py-2 rounded-xl cursor-pointer transition-all ${
+                      depositFilter === sub.id
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    {sub.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* SEARCH */}
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-4.5 h-4.5" />
+              <input
+                type="text"
+                placeholder="Search deposits by Trx Code, Sender name, phone, or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-black/50 border border-zinc-900 rounded-2xl px-12 py-3.5 text-xs font-mono placeholder-zinc-700 text-white focus:outline-none focus:border-blue-500 transition-all shadow-inner"
+              />
+            </div>
+
+            {/* DEPOSITS SCROLLABLE GRID */}
+            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 no-scrollbar">
+              {filteredDeposits.length === 0 ? (
+                <div className="text-center py-20 bg-black/20 border border-zinc-900/50 rounded-3xl">
+                  <p className="text-zinc-500 font-mono text-xs">No deposits match current filter.</p>
                 </div>
+              ) : (
+                filteredDeposits.map(dep => (
+                  <div key={dep.depositId} className="bg-[#0c1322] border border-zinc-900 hover:border-zinc-800 rounded-3xl p-6 space-y-4 transition-all duration-300 shadow-xl">
+                    <div className="flex justify-between items-start gap-4">
+                      <div>
+                        <span className="bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[8px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-wider">
+                          eSewa / Khalti Load
+                        </span>
+                        <p className="text-xs text-white font-mono font-bold mt-2">Trx Reference ID: {dep.trx}</p>
+                        <p className="text-[9px] text-zinc-500 font-mono mt-1">{new Date(dep.timestamp).toLocaleString()}</p>
+                        <p className="text-[11px] text-zinc-400 mt-1">User Email: <strong className="text-zinc-300 font-mono">{dep.email}</strong></p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <strong className="text-emerald-500 font-mono text-base block">NPR {dep.amount}</strong>
+                        <span className={`inline-block text-[9px] font-bold uppercase font-mono px-2 py-0.5 rounded-full mt-1 ${
+                          dep.status === "approved" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : dep.status === "rejected" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse"
+                        }`}>
+                          {dep.status}
+                        </span>
+                      </div>
+                    </div>
+
+                    {dep.senderName && (
+                      <div className="bg-black/30 border border-zinc-900 rounded-2xl p-3.5 text-xs font-mono text-zinc-400">
+                        <span className="text-zinc-600 block text-[8px] uppercase tracking-wider font-extrabold mb-0.5">Sender Details</span>
+                        <strong className="text-white">{dep.senderName}</strong> &bull; {dep.senderNum || "N/A"}
+                      </div>
+                    )}
+
+                    {dep.proofImage && (
+                      <div className="text-center bg-black/60 p-3 border border-zinc-900/60 rounded-2xl">
+                        <span className="text-zinc-600 block text-[8px] uppercase tracking-wider font-extrabold mb-2 text-left font-mono">Uploaded Deposit Receipt Proof</span>
+                        <a href={dep.proofImage} target="_blank" rel="referrer noopener" className="inline-block relative group overflow-hidden rounded-xl">
+                          <img
+                            src={dep.proofImage}
+                            alt="deposit proof slip"
+                            className="max-h-60 object-contain mx-auto rounded-xl transition-transform duration-300 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-mono text-[9px] uppercase tracking-wider">
+                            View Original Image
+                          </div>
+                        </a>
+                      </div>
+                    )}
+
+                    {dep.status === "pending" && (
+                      <div className="flex gap-3 font-mono font-bold">
+                        <button
+                          onClick={() => rejectDeposit(dep)}
+                          className="flex-1 bg-red-950/20 hover:bg-red-900/30 border border-red-900/30 text-red-500 text-[11px] py-3 rounded-xl cursor-pointer uppercase tracking-wider transition-all"
+                        >
+                          DECLINE RECEIPT
+                        </button>
+                        <button
+                          onClick={() => approveDeposit(dep)}
+                          className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-500 hover:to-blue-600 text-[11px] py-3 rounded-xl cursor-pointer uppercase tracking-wider transition-all shadow-lg shadow-blue-500/20"
+                        >
+                          CONFIRM CREDIT
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 1.3 USER BALANCES SECTION (FIRST-CLASS TAB) */}
+        {adminTab === "users" && (
+          <div className="space-y-6 animate-fadeIn">
+            <h3 className="font-orbitron font-extrabold text-lg uppercase tracking-widest text-white flex items-center gap-2">
+              <Users className="w-5 h-5 text-purple-400" /> Gamer Balances
+            </h3>
+
+            {/* SEARCH */}
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-4.5 h-4.5" />
+              <input
+                type="text"
+                placeholder="Search registered gamers by Name, Email, Unique ID, or WhatsApp Phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-black/50 border border-zinc-900 rounded-2xl px-12 py-3.5 text-xs font-mono placeholder-zinc-700 text-white focus:outline-none focus:border-purple-500 transition-all shadow-inner"
+              />
+            </div>
+
+            {/* USERS LIST VIEW */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto pr-2 no-scrollbar">
+              {filteredUsers.length === 0 ? (
+                <div className="col-span-full text-center py-20 bg-black/20 border border-zinc-900/50 rounded-3xl">
+                  <p className="text-zinc-500 font-mono text-xs">No registered gamers match the query.</p>
+                </div>
+              ) : (
+                filteredUsers.map(u => (
+                  <div key={u.uid} className="bg-[#0c1322] border border-zinc-900 hover:border-zinc-800 rounded-3xl p-5 flex items-center justify-between gap-4 transition-all duration-300 shadow-xl">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <strong className="text-white text-sm truncate">{u.name}</strong>
+                        <span className="text-[9px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-mono font-bold tracking-wider">
+                          {u.uniqueId || "N/A"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-500 font-mono truncate mt-1">{u.email}</p>
+                      {u.phone && <p className="text-[10px] text-zinc-500 font-mono">WhatsApp: {u.phone}</p>}
+                      <p className="text-xs text-emerald-500 font-mono font-black mt-2 filter drop-shadow-[0_0_10px_rgba(16,185,129,0.15)]">NPR {u.balance ?? 0}</p>
+                    </div>
+                    <div className="flex flex-col gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => setSelectedUser(u)}
+                        className="bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/20 text-purple-400 hover:text-purple-300 text-[10px] px-3.5 py-2.5 rounded-xl cursor-pointer font-extrabold uppercase tracking-widest font-mono transition-all text-center"
+                      >
+                        BALANCE
+                      </button>
+                      <button
+                        onClick={() => toggleBlockUser(u)}
+                        className={`px-3 py-2 rounded-xl border text-[10px] font-mono tracking-widest uppercase font-extrabold cursor-pointer transition-all ${
+                          u.blocked
+                            ? "bg-red-950/35 text-red-500 border-red-900/50 hover:bg-red-900/10"
+                            : "bg-zinc-900 hover:bg-zinc-800 text-zinc-500 border-zinc-800 hover:text-zinc-400"
+                        }`}
+                      >
+                        {u.blocked ? "BLOCKED" : "BLOCK"}
+                      </button>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>

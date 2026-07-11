@@ -955,7 +955,7 @@ export default function App() {
 
       {/* MAIN APPLICATION INTERFACE */}
       {currentUser && !authInitializing && (
-        <div id="app-content" className="flex-1 flex flex-col w-full max-w-3xl mx-auto pb-24 shadow-2xl min-h-screen bg-bg-navy border-x border-zinc-900/40">
+        <div id="app-content" className={`flex-1 flex flex-col w-full ${activeSection === "admin" && isAdmin ? "max-w-6xl" : "max-w-3xl"} mx-auto pb-24 shadow-2xl min-h-screen bg-bg-navy border-x border-zinc-900/40 transition-all duration-300`}>
           {/* Header Bar */}
           <header className="sticky top-0 bg-bg-navy/90 backdrop-blur-md px-5 py-4 flex justify-between items-center border-b border-red-600/20 z-50">
             <Logo iconSize={20} textClass="text-lg" />
