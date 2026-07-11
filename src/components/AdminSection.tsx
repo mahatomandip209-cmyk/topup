@@ -32,7 +32,9 @@ import {
   UserCheck,
   UserX,
   Upload,
-  ClipboardList
+  ClipboardList,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { ServiceItem, GamePackage } from "../data/packages";
 
@@ -70,6 +72,10 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
   const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustNote, setAdjustNote] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Password visibility and Add Game Popup states
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
 
   // New Game Form state
   const [newGameId, setNewGameId] = useState("");
@@ -456,6 +462,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
       setNewGameCategory("topup");
       setNewGameDesc("");
       setSelectedGameReqs([]);
+      setIsAddGameModalOpen(false);
       alert("Game added successfully!");
     } catch (err: any) {
       alert("Error adding game: " + err.message);
@@ -763,26 +770,36 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
             <Menu className="w-5 h-5 text-red-500 animate-pulse" />
           </button>
           
-          <div>
-            <h2 className="font-orbitron font-extrabold text-lg text-white tracking-wider uppercase flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-red-500" /> BNY Desk
-            </h2>
-            <p className="text-[10px] text-zinc-500 font-mono tracking-wider uppercase">
-              {adminTab === "dashboard" && "Dashboard Overview"}
-              {adminTab === "orders" && "Fulfill Orders"}
-              {adminTab === "deposits" && "Load Deposits"}
-              {adminTab === "users" && "User Balances"}
-              {adminTab === "games" && "Games / Service Title Editor"}
-              {adminTab === "products" && "Packages & Price Customizer"}
-              {adminTab === "qrcode" && "Payment settings details"}
-              {adminTab === "requirements" && "Dynamic Order Requirements manager"}
-              {adminTab === "banners" && "Slide banners manager"}
-            </p>
-          </div>
+          {adminTab !== "games" ? (
+            <div>
+              <h2 className="font-orbitron font-extrabold text-lg text-white tracking-wider uppercase flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-red-500" /> BNY Desk
+              </h2>
+              <p className="text-[10px] text-zinc-500 font-mono tracking-wider uppercase">
+                {adminTab === "dashboard" && "Dashboard Overview"}
+                {adminTab === "orders" && "Fulfill Orders"}
+                {adminTab === "deposits" && "Load Deposits"}
+                {adminTab === "users" && "User Balances"}
+                {adminTab === "products" && "Packages & Price Customizer"}
+                {adminTab === "qrcode" && "Payment settings details"}
+                {adminTab === "requirements" && "Dynamic Order Requirements manager"}
+                {adminTab === "banners" && "Slide banners manager"}
+              </p>
+            </div>
+          ) : (
+            <div>
+              <h2 className="font-orbitron font-extrabold text-lg text-white tracking-wider uppercase flex items-center gap-2">
+                Manage Games
+              </h2>
+              <p className="text-[10px] text-zinc-500 font-mono tracking-wider uppercase">
+                Add, Edit, and Delete Game Titles
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
-          {setActiveSection && (
+          {adminTab !== "games" && setActiveSection && (
             <button
               onClick={() => setActiveSection("home")}
               className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 text-[10px] font-bold px-3 py-1.5 rounded-xl uppercase tracking-wider font-mono transition-all cursor-pointer flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.1)]"
@@ -791,9 +808,11 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
               Exit Admin
             </button>
           )}
-          <span className="bg-red-500/10 border border-red-500/20 text-red-500 text-[9px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest font-mono">
-            {adminTab.toUpperCase()}
-          </span>
+          {adminTab !== "games" && (
+            <span className="bg-red-500/10 border border-red-500/20 text-red-500 text-[9px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest font-mono">
+              {adminTab.toUpperCase()}
+            </span>
+          )}
         </div>
       </div>
 
@@ -1255,39 +1274,67 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                   <p className="text-zinc-500 font-mono text-xs">No registered gamers match the query.</p>
                 </div>
               ) : (
-                filteredUsers.map(u => (
-                  <div key={u.uid} className="bg-[#0c1322] border border-zinc-900 hover:border-zinc-800 rounded-3xl p-5 flex items-center justify-between gap-4 transition-all duration-300 shadow-xl">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <strong className="text-white text-sm truncate">{u.name}</strong>
-                        <span className="text-[9px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-mono font-bold tracking-wider">
-                          {u.uniqueId || "N/A"}
-                        </span>
+                filteredUsers.map(u => {
+                  const isPasswordVisible = showPasswords[u.uid] || false;
+                  return (
+                    <div key={u.uid} className="bg-[#0c1322] border border-zinc-900 hover:border-zinc-800 rounded-3xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-300 shadow-xl">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] text-zinc-500 font-mono font-bold uppercase">Name:</span>
+                          <strong className="text-white text-sm truncate">{u.name}</strong>
+                          <span className="text-[9px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-mono font-bold tracking-wider">
+                            {u.uniqueId || "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-zinc-400 font-mono">
+                          <span className="text-[10px] text-zinc-500 font-mono font-bold uppercase">Email:</span>
+                          <span className="truncate">{u.email}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-[11px] text-zinc-400 font-mono">
+                          <span className="text-[10px] text-zinc-500 font-mono font-bold uppercase">Number:</span>
+                          <span>{u.phone || "N/A"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-zinc-400 font-mono">
+                          <span className="text-[10px] text-zinc-500 font-mono font-bold uppercase">Password:</span>
+                          <span className="font-semibold text-zinc-300 bg-black/40 px-2 py-0.5 rounded border border-zinc-900 font-sans">
+                            {isPasswordVisible ? (u.password || "BNYPass@123") : "••••••••"}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setShowPasswords(prev => ({ ...prev, [u.uid]: !isPasswordVisible }));
+                            }}
+                            className="p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-white transition-colors cursor-pointer"
+                            title={isPasswordVisible ? "Hide Password" : "Show Password"}
+                          >
+                            {isPasswordVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1.5 pt-1">
+                          <span className="text-[10px] text-zinc-500 font-mono font-bold uppercase">Balance:</span>
+                          <span className="text-xs text-emerald-500 font-mono font-black filter drop-shadow-[0_0_10px_rgba(16,185,129,0.15)]">NPR {u.balance ?? 0}</span>
+                        </div>
                       </div>
-                      <p className="text-xs text-zinc-500 font-mono truncate mt-1">{u.email}</p>
-                      {u.phone && <p className="text-[10px] text-zinc-500 font-mono">WhatsApp: {u.phone}</p>}
-                      <p className="text-xs text-emerald-500 font-mono font-black mt-2 filter drop-shadow-[0_0_10px_rgba(16,185,129,0.15)]">NPR {u.balance ?? 0}</p>
+                      <div className="flex flex-row sm:flex-col gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => setSelectedUser(u)}
+                          className="flex-1 sm:flex-none bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/20 text-purple-400 hover:text-purple-300 text-[10px] px-3.5 py-2.5 rounded-xl cursor-pointer font-extrabold uppercase tracking-widest font-mono transition-all text-center"
+                        >
+                          BALANCE
+                        </button>
+                        <button
+                          onClick={() => toggleBlockUser(u)}
+                          className={`flex-1 sm:flex-none px-3 py-2 rounded-xl border text-[10px] font-mono tracking-widest uppercase font-extrabold cursor-pointer transition-all ${
+                            u.blocked
+                              ? "bg-red-950/35 text-red-500 border-red-900/50 hover:bg-red-900/10"
+                              : "bg-zinc-900 hover:bg-zinc-800 text-zinc-500 border-zinc-800 hover:text-zinc-400"
+                          }`}
+                        >
+                          {u.blocked ? "BLOCKED" : "BLOCK"}
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => setSelectedUser(u)}
-                        className="bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/20 text-purple-400 hover:text-purple-300 text-[10px] px-3.5 py-2.5 rounded-xl cursor-pointer font-extrabold uppercase tracking-widest font-mono transition-all text-center"
-                      >
-                        BALANCE
-                      </button>
-                      <button
-                        onClick={() => toggleBlockUser(u)}
-                        className={`px-3 py-2 rounded-xl border text-[10px] font-mono tracking-widest uppercase font-extrabold cursor-pointer transition-all ${
-                          u.blocked
-                            ? "bg-red-950/35 text-red-500 border-red-900/50 hover:bg-red-900/10"
-                            : "bg-zinc-900 hover:bg-zinc-800 text-zinc-500 border-zinc-800 hover:text-zinc-400"
-                        }`}
-                      >
-                        {u.blocked ? "BLOCKED" : "BLOCK"}
-                      </button>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -1296,116 +1343,215 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
         {/* 2. GAMES CRUD EDITOR */}
         {adminTab === "games" && (
           <div className="space-y-6">
-            {/* ADD GAME FORM */}
-            <div className="bg-black/30 border border-zinc-900 p-5 rounded-2xl space-y-4">
-              <span className="text-[10px] text-red-500 font-extrabold font-mono uppercase tracking-widest block">
-                Add New Game / Service Title
-              </span>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
-                <div>
-                  <label className="text-zinc-500 block mb-1 uppercase text-[9px] font-bold">Game Slug / unique ID (No spaces)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. clash_of_clans"
-                    value={newGameId}
-                    onChange={(e) => setNewGameId(e.target.value)}
-                    className="w-full bg-black border border-zinc-900 rounded-lg py-2 px-3 text-white focus:outline-none focus:border-red-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-zinc-500 block mb-1 uppercase text-[9px] font-bold">Game Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Clash of Clans"
-                    value={newGameName}
-                    onChange={(e) => setNewGameName(e.target.value)}
-                    className="w-full bg-black border border-zinc-900 rounded-lg py-2 px-3 text-white focus:outline-none focus:border-red-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-zinc-500 block mb-1 uppercase text-[9px] font-bold">Image URL</label>
-                  <input
-                    type="text"
-                    placeholder="https://i.ibb.co/..."
-                    value={newGameImage}
-                    onChange={(e) => setNewGameImage(e.target.value)}
-                    className="w-full bg-black border border-zinc-900 rounded-lg py-2 px-3 text-white focus:outline-none focus:border-red-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-zinc-500 block mb-1 uppercase text-[9px] font-bold">Category</label>
-                  <select
-                    value={newGameCategory}
-                    onChange={(e) => setNewGameCategory(e.target.value as any)}
-                    className="w-full bg-black border border-zinc-900 rounded-lg py-2 px-3 text-white focus:outline-none focus:border-red-500 uppercase"
-                  >
-                    <option value="topup">Direct Top-up</option>
-                    <option value="voucher">Voucher Code</option>
-                    <option value="subscription">Premium Subscription</option>
-                  </select>
-                </div>
-
-                <div className="col-span-1 md:col-span-2">
-                  <label className="text-zinc-500 block mb-1 uppercase text-[9px] font-bold">Description Text</label>
-                  <input
-                    type="text"
-                    placeholder="Enter short gamer description..."
-                    value={newGameDesc}
-                    onChange={(e) => setNewGameDesc(e.target.value)}
-                    className="w-full bg-black border border-zinc-900 rounded-lg py-2 px-3 text-white focus:outline-none focus:border-red-500"
-                  />
-                </div>
-
-                <div className="col-span-1 md:col-span-2">
-                  <label className="text-zinc-500 block mb-2 uppercase text-[9px] font-bold">Select Requirements (Checkout Input Fields)</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-black/45 rounded-xl border border-zinc-900">
-                    {globalRequirements.map(req => {
-                      const isChecked = selectedGameReqs.includes(req.id);
-                      return (
-                        <label key={req.id} className="flex items-center gap-2 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => {
-                              if (isChecked) {
-                                setSelectedGameReqs(selectedGameReqs.filter(id => id !== req.id));
-                              } else {
-                                setSelectedGameReqs([...selectedGameReqs, req.id]);
-                              }
-                            }}
-                            className="rounded accent-red-600"
-                          />
-                          <span className="text-[11px] text-zinc-300 truncate">{req.name} ({req.type})</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
+            {/* TOP ACTIONS AREA */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-900">
+              <div>
+                <h3 className="font-orbitron font-extrabold text-lg uppercase tracking-widest text-white flex items-center gap-2">
+                  GAMES / SERVICE TITLES
+                </h3>
+                <p className="text-[10px] text-zinc-500 font-mono tracking-wider">
+                  Manage all active game top-up configurations
+                </p>
               </div>
-
               <button
-                onClick={handleAddGame}
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-xs uppercase font-mono cursor-pointer transition-colors"
+                onClick={() => {
+                  setNewGameId("");
+                  setNewGameName("");
+                  setNewGameImage("");
+                  setNewGameCategory("topup");
+                  setNewGameDesc("");
+                  setSelectedGameReqs([]);
+                  setIsAddGameModalOpen(true);
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white font-mono font-bold text-xs uppercase tracking-wider px-5 py-3 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 self-start sm:self-auto"
               >
-                Create Game Title
+                <Plus className="w-4 h-4" />
+                Add Game Option
               </button>
             </div>
 
-            {/* LIST OF GAMES WITH EDIT/DELETE */}
-            <div className="space-y-3.5">
+            {/* ADD GAME POPUP MODAL */}
+            <AnimatePresence>
+              {isAddGameModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="bg-[#0b111e] border border-zinc-900 rounded-3xl p-6 w-full max-w-md space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto no-scrollbar"
+                  >
+                    <button
+                      onClick={() => setIsAddGameModalOpen(false)}
+                      className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+
+                    <div className="space-y-1">
+                      <h4 className="font-orbitron font-extrabold text-lg text-white uppercase tracking-wider">
+                        Add New Game
+                      </h4>
+                      <p className="text-xs text-zinc-500 font-sans">Configure details for your new game service</p>
+                    </div>
+
+                    <div className="space-y-4 font-mono text-xs text-left">
+                      {/* Game Name */}
+                      <div>
+                        <label className="text-zinc-400 block mb-1 uppercase text-[9px] font-bold">Game Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Clash of Clans"
+                          value={newGameName}
+                          onChange={(e) => {
+                            setNewGameName(e.target.value);
+                            const slug = e.target.value
+                              .toLowerCase()
+                              .trim()
+                              .replace(/[^a-z0-9]+/g, "_");
+                            setNewGameId(slug);
+                          }}
+                          className="w-full bg-black border border-zinc-900 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-red-500 font-sans text-xs"
+                        />
+                      </div>
+
+                      {/* Game Slug */}
+                      <div>
+                        <label className="text-zinc-400 block mb-1 uppercase text-[9px] font-bold">Game Slug / unique ID (No spaces)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. clash_of_clans"
+                          value={newGameId}
+                          onChange={(e) => setNewGameId(e.target.value)}
+                          className="w-full bg-black border border-zinc-900 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-red-500 font-sans text-xs"
+                        />
+                      </div>
+
+                      {/* Upload Logo File Selector */}
+                      <div>
+                        <label className="text-zinc-400 block mb-1 uppercase text-[9px] font-bold">Upload Logo (PNG/JPG)</label>
+                        <div className="flex flex-col gap-2">
+                          <label className="flex items-center justify-center gap-2 bg-black/60 border border-zinc-900 hover:border-zinc-800 rounded-xl py-3 px-4 text-zinc-400 hover:text-white cursor-pointer transition-all border-dashed">
+                            <Upload className="w-4 h-4 text-red-500" />
+                            <span>{newGameImage ? "Logo Image Loaded" : "Choose Image File"}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    setNewGameImage(reader.result as string);
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                          {newGameImage && (
+                            <div className="flex items-center gap-2 bg-black/45 p-2 rounded-xl border border-zinc-900">
+                              <img src={newGameImage} className="w-8 h-8 object-cover rounded" alt="Logo preview" />
+                              <span className="text-[10px] text-zinc-500 truncate flex-1">{newGameImage.startsWith("data:") ? "Local Image Base64" : newGameImage}</span>
+                              <button onClick={() => setNewGameImage("")} className="text-red-500 hover:text-red-400 text-[10px] cursor-pointer">Remove</button>
+                            </div>
+                          )}
+                          <div className="text-zinc-600 text-[9px] text-center uppercase tracking-widest font-extrabold my-1">or Enter Image URL</div>
+                          <input
+                            type="text"
+                            placeholder="e.g. https://i.ibb.co/..."
+                            value={newGameImage}
+                            onChange={(e) => setNewGameImage(e.target.value)}
+                            className="w-full bg-black border border-zinc-900 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-red-500 font-sans text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Category */}
+                      <div>
+                        <label className="text-zinc-400 block mb-1 uppercase text-[9px] font-bold">Category</label>
+                        <select
+                          value={newGameCategory}
+                          onChange={(e) => setNewGameCategory(e.target.value as any)}
+                          className="w-full bg-black border border-zinc-900 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-red-500 uppercase text-xs"
+                        >
+                          <option value="topup">Direct Top-up</option>
+                          <option value="voucher">Voucher Code</option>
+                          <option value="subscription">Premium Subscription</option>
+                        </select>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <label className="text-zinc-400 block mb-1 uppercase text-[9px] font-bold">Description Text</label>
+                        <input
+                          type="text"
+                          placeholder="Enter short game description..."
+                          value={newGameDesc}
+                          onChange={(e) => setNewGameDesc(e.target.value)}
+                          className="w-full bg-black border border-zinc-900 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-red-500 font-sans text-xs"
+                        />
+                      </div>
+
+                      {/* Requirements */}
+                      <div>
+                        <label className="text-zinc-400 block mb-2 uppercase text-[9px] font-bold">Checkout Input Fields</label>
+                        <div className="grid grid-cols-2 gap-2 p-3 bg-black rounded-xl border border-zinc-900 max-h-[120px] overflow-y-auto no-scrollbar">
+                          {globalRequirements.map(req => {
+                            const isChecked = selectedGameReqs.includes(req.id);
+                            return (
+                              <label key={req.id} className="flex items-center gap-2 cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {
+                                    if (isChecked) {
+                                      setSelectedGameReqs(selectedGameReqs.filter(id => id !== req.id));
+                                    } else {
+                                      setSelectedGameReqs([...selectedGameReqs, req.id]);
+                                    }
+                                  }}
+                                  className="rounded accent-red-600 cursor-pointer"
+                                />
+                                <span className="text-[10px] text-zinc-300 truncate">{req.name}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action buttons inside popup */}
+                    <div className="flex gap-3 pt-2 font-mono">
+                      <button
+                        onClick={() => setIsAddGameModalOpen(false)}
+                        className="flex-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 py-3 rounded-xl text-xs uppercase cursor-pointer transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleAddGame}
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-xs uppercase cursor-pointer transition-colors shadow-lg shadow-red-500/20"
+                      >
+                        Create Game
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
+
+            {/* LIST OF AVAILABLE GAMES */}
+            <div className="space-y-4">
               <span className="text-[10px] text-zinc-500 font-extrabold font-mono uppercase tracking-widest block">
                 Manage Available Games ({dbGames.length})
               </span>
 
-              <div className="grid grid-cols-1 gap-3.5 max-h-[400px] overflow-y-auto pr-1 no-scrollbar">
+              <div className="grid grid-cols-1 gap-4 max-h-[600px] overflow-y-auto pr-1 no-scrollbar font-mono">
                 {dbGames.map(game => {
                   const isEditing = editingGameId === game.id;
                   return (
-                    <div key={game.id} className="bg-black/40 border border-zinc-900 p-4 rounded-2xl space-y-4">
+                    <div key={game.id} className="bg-[#0c1322] border border-zinc-900 hover:border-zinc-800 p-5 rounded-3xl space-y-4 transition-all duration-300 shadow-xl text-left">
                       {isEditing ? (
                         // Game Editing State
                         <div className="space-y-3 font-mono text-xs">
@@ -1420,13 +1566,34 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                               />
                             </div>
                             <div>
-                              <label className="text-zinc-600 block text-[8px] uppercase">Image URL</label>
-                              <input
-                                type="text"
-                                value={editGameImage}
-                                onChange={(e) => setEditGameImage(e.target.value)}
-                                className="w-full bg-black border border-zinc-900 rounded-lg p-2 text-white focus:outline-none focus:border-red-500"
-                              />
+                              <label className="text-zinc-600 block text-[8px] uppercase">Image URL / Logo Upload</label>
+                              <div className="flex flex-col gap-1.5">
+                                <label className="flex items-center justify-center gap-1 bg-black border border-zinc-900 hover:border-zinc-800 rounded-lg p-2 text-[10px] text-zinc-400 cursor-pointer transition-all">
+                                  <Upload className="w-3.5 h-3.5 text-red-500" />
+                                  <span>Upload New Logo</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => {
+                                          setEditGameImage(reader.result as string);
+                                        };
+                                        reader.readAsDataURL(file);
+                                      }
+                                    }}
+                                    className="hidden"
+                                  />
+                                </label>
+                                <input
+                                  type="text"
+                                  value={editGameImage}
+                                  onChange={(e) => setEditGameImage(e.target.value)}
+                                  className="w-full bg-black border border-zinc-900 rounded-lg p-2 text-white focus:outline-none focus:border-red-500"
+                                />
+                              </div>
                             </div>
                             <div>
                               <label className="text-zinc-600 block text-[8px] uppercase">Category</label>
@@ -1481,13 +1648,13 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                           <div className="flex gap-2 font-bold font-mono">
                             <button
                               onClick={() => setEditingGameId(null)}
-                              className="flex-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 py-1.5 rounded-lg text-[10px] cursor-pointer"
+                              className="flex-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 py-2 rounded-xl text-[10px] cursor-pointer"
                             >
                               CANCEL
                             </button>
                             <button
                               onClick={handleEditGameSave}
-                              className="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded-lg text-[10px] cursor-pointer"
+                              className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-xl text-[10px] cursor-pointer"
                             >
                               SAVE CHANGES
                             </button>
@@ -1500,16 +1667,17 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                             <img
                               src={game.image}
                               alt={game.name}
-                              className="w-12 h-12 object-cover rounded-xl border border-zinc-900 flex-shrink-0"
+                              className="w-14 h-14 object-cover rounded-2xl border border-zinc-900 flex-shrink-0 bg-black/40"
+                              referrerPolicy="no-referrer"
                             />
                             <div>
                               <div className="flex items-center gap-2">
-                                <strong className="text-white text-xs">{game.name}</strong>
-                                <span className="bg-zinc-900 border border-zinc-800 text-zinc-500 text-[8px] font-mono px-1.5 rounded-full lowercase">
+                                <strong className="text-white text-sm">{game.name}</strong>
+                                <span className="bg-zinc-900 border border-zinc-800 text-zinc-500 text-[8px] font-mono px-2 py-0.5 rounded-full uppercase">
                                   {game.category}
                                 </span>
                               </div>
-                              <p className="text-[10px] text-zinc-500 font-mono mt-0.5 truncate max-w-xs">{game.description}</p>
+                              <p className="text-[10px] text-zinc-500 font-mono mt-0.5 max-w-xs">{game.description}</p>
                               <div className="flex gap-1.5 flex-wrap mt-1">
                                 {game.fields?.map((f: any, idx: number) => (
                                   <span key={idx} className="bg-red-500/5 text-red-500 border border-red-950/20 text-[7px] font-mono font-bold uppercase px-1 py-0.2 rounded">
@@ -1528,24 +1696,23 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                                 setEditGameImage(game.image);
                                 setEditGameCategory(game.category || "topup");
                                 setEditGameDesc(game.description || "");
-                                // Match checkout fields labels with global reqs
                                 const matchIds = (game.fields || []).map((f: any) => {
                                   const reqObj = globalRequirements.find(r => r.name.toLowerCase() === f.label.toLowerCase());
                                   return reqObj?.id;
                                 }).filter(Boolean);
                                 setEditGameReqs(matchIds);
                               }}
-                              className="p-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white rounded-xl cursor-pointer"
+                              className="p-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white rounded-xl cursor-pointer transition-colors"
                               title="Edit Game"
                             >
-                              <Edit3 className="w-3.5 h-3.5" />
+                              <Edit3 className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDeleteGame(game.id)}
-                              className="p-2 bg-red-950/20 hover:bg-red-900/20 border border-red-950 text-red-500 rounded-xl cursor-pointer"
+                              className="p-2.5 bg-red-950/20 hover:bg-red-900/20 border border-red-950 text-red-500 rounded-xl cursor-pointer transition-colors"
                               title="Delete Game"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         </div>

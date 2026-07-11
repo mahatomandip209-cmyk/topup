@@ -432,6 +432,7 @@ export default function App() {
       await set(ref(db, `users/${res.user.uid}`), {
         name: regName,
         email: regEmail,
+        password: regPass,
         uniqueId: uniqueId,
         balance: 0,
         blocked: false,
