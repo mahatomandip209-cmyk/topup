@@ -905,40 +905,6 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
         {/* 1. DASHBOARD OVERVIEW */}
         {adminTab === "dashboard" && (
           <div className="space-y-8 animate-fadeIn">
-            {/* WELCOME BANNER */}
-            <div className="bg-gradient-to-r from-red-950/20 to-[#0c1322] border border-red-900/20 p-8 rounded-3xl space-y-3 relative overflow-hidden shadow-2xl">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-red-600/5 rounded-full blur-3xl pointer-events-none"></div>
-              <h3 className="font-orbitron font-extrabold text-2xl tracking-widest text-white uppercase">
-                BNY SECURE ADMIN PORTAL
-              </h3>
-              <p className="text-zinc-400 text-xs leading-relaxed max-w-2xl font-sans">
-                Welcome back, administrator. You have full oversight over orders, financial wallet deposits, registered gamers, and system packages. Use the side drawer menu or quick diagnostics shortcuts below to begin processing pending requests.
-              </p>
-              <div className="flex flex-wrap gap-2 pt-2">
-                <button
-                  onClick={() => setAdminTab("orders")}
-                  className="bg-red-600 text-white font-mono font-bold text-[10px] uppercase tracking-wider px-4 py-2.5 rounded-xl cursor-pointer hover:bg-red-700 transition-all flex items-center gap-1.5 shadow-lg shadow-red-500/20"
-                >
-                  <ClipboardList className="w-3.5 h-3.5" />
-                  Process Orders ({pendingOrdersCount})
-                </button>
-                <button
-                  onClick={() => setAdminTab("deposits")}
-                  className="bg-blue-600 text-white font-mono font-bold text-[10px] uppercase tracking-wider px-4 py-2.5 rounded-xl cursor-pointer hover:bg-blue-700 transition-all flex items-center gap-1.5 shadow-lg shadow-blue-500/20"
-                >
-                  <Wallet className="w-3.5 h-3.5" />
-                  Load Deposits ({pendingDepositsCount})
-                </button>
-                <button
-                  onClick={() => setAdminTab("users")}
-                  className="bg-zinc-800 text-zinc-300 font-mono font-bold text-[10px] uppercase tracking-wider px-4 py-2.5 rounded-xl cursor-pointer hover:bg-zinc-700 transition-all flex items-center gap-1.5 border border-zinc-700/50"
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  Manage Balances
-                </button>
-              </div>
-            </div>
-
             {/* STATISTICS ROW */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               {/* Total Sales Card */}
@@ -1015,44 +981,6 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                   <p className="text-2xl font-black font-mono text-purple-400 tracking-tight">{allUsers.length}</p>
                   <span className="text-[8px] text-zinc-500 block font-mono uppercase font-bold mt-1">Gamer userbase</span>
                 </div>
-              </div>
-            </div>
-
-            {/* LIVE SYSTEM TELEMETRY */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              <div className="bg-black/20 border border-zinc-900 p-6 rounded-3xl space-y-3">
-                <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400">
-                  SYSTEM OVERVIEW
-                </h4>
-                <div className="space-y-2 text-xs font-mono text-zinc-400">
-                  <div className="flex justify-between border-b border-zinc-900 pb-2">
-                    <span>Database Connection</span>
-                    <strong className="text-emerald-500 font-bold">ONLINE (REALTIME)</strong>
-                  </div>
-                  <div className="flex justify-between border-b border-zinc-900 pb-2">
-                    <span>Active Services / Games</span>
-                    <strong className="text-white font-bold">{services.length} Enabled</strong>
-                  </div>
-                  <div className="flex justify-between border-b border-zinc-900 pb-2">
-                    <span>Authentication Mode</span>
-                    <strong className="text-white font-bold">Secure Firebase Auth</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Server Local Time</span>
-                    <strong className="text-white font-bold">{new Date().toLocaleTimeString()}</strong>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-black/20 border border-zinc-900 p-6 rounded-3xl space-y-3">
-                <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400">
-                  ADMINISTRATIVE TIPS
-                </h4>
-                <ul className="list-disc pl-4 text-xs text-zinc-500 space-y-2 leading-relaxed">
-                  <li>To load wallet credits instantly, head over to the <strong className="text-zinc-300">Deposits</strong> tab to audit payment screenshots.</li>
-                  <li>Provide precise UID delivery for Garena & PUBG orders, then hit <strong className="text-zinc-300">DISPATCH DELIVERED</strong>.</li>
-                  <li>Keep player payment rates competitive using the <strong className="text-zinc-300">Products</strong> price customizer.</li>
-                </ul>
               </div>
             </div>
           </div>
