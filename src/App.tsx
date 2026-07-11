@@ -113,6 +113,7 @@ export default function App() {
   // Active service selection (one of the 10 services)
   const [activeService, setActiveService] = useState<ServiceItem | null>(null);
   const [selectedPkg, setSelectedPkg] = useState<GamePackage | null>(null);
+  const [quantity, setQuantity] = useState<number>(1);
 
   // Dynamic input fields state for active order
   const [fieldsState, setFieldsState] = useState<any>({});
@@ -601,6 +602,7 @@ export default function App() {
   const openTopup = (service: ServiceItem) => {
     setActiveService(service);
     setSelectedPkg(null);
+    setQuantity(1);
     setFieldsState({});
     setActiveSection("topup");
   };
@@ -635,14 +637,21 @@ export default function App() {
 
       // Read fallback db custom price or standard package price
       const safeKey = selectedPkg.n.replace(/[.#$\[\]]/g, "_");
-      finalPriceNPR = dbPrices[activeService.id]?.[safeKey] ?? selectedPkg.p;
-      finalPackageName = selectedPkg.n;
+      const basePrice = dbPrices[activeService.id]?.[safeKey] ?? selectedPkg.p;
+      finalPriceNPR = basePrice * quantity;
+      finalPackageName = quantity > 1 ? `${selectedPkg.n} (Qty: ${quantity})` : selectedPkg.n;
 
       // Validate dynamic fields based on configurations
-      for (const f of activeService.fields) {
-        if (!fieldsState[f.key]) {
-          alert(`Please enter a valid ${f.label}`);
-          return;
+      if (activeService.category !== "voucher") {
+        const fieldsToValidate = (activeService.category === "topup" && (!activeService.fields || activeService.fields.length === 0))
+          ? [{ label: "Player UID", placeholder: "e.g. 5839218392", type: "text", key: "playerUid" }]
+          : activeService.fields;
+
+        for (const f of fieldsToValidate) {
+          if (!fieldsState[f.key]) {
+            alert(`Please enter a valid ${f.label}`);
+            return;
+          }
         }
       }
     }
@@ -678,9 +687,10 @@ export default function App() {
         game: activeService.name,
         packageName: finalPackageName,
         price: finalPriceNPR,
+        quantity: activeService.id === "usdt" ? 1 : quantity,
         status: "pending",
         timestamp: Date.now(),
-        ...fieldsState
+        ...(activeService.category === "voucher" ? {} : fieldsState)
       };
 
       const updates: any = {};
@@ -689,9 +699,11 @@ export default function App() {
       await update(ref(db), updates);
 
       // Construct highly-polished WhatsApp notification text
-      const fieldsText = Object.keys(fieldsState)
-        .map(key => `🔸 *${key.toUpperCase()}:* ${fieldsState[key]}`)
-        .join("\n");
+      const fieldsText = activeService.category === "voucher"
+        ? "🔸 *TYPE:* Instant delivery voucher code\n🔸 *REQUIREMENTS:* None"
+        : Object.keys(fieldsState)
+            .map(key => `🔸 *${key.toUpperCase()}:* ${fieldsState[key]}`)
+            .join("\n");
 
       const msg = `🛒 *BNY SHOP NEW ORDER* 🚀\n\n` +
                   `📦 *Product:* ${activeService.name}\n` +
@@ -1403,38 +1415,77 @@ export default function App() {
                           {activeService.id === "usdt" ? (
                             `USDT BUY/SELL TRANSACTION DESK`
                           ) : (
-                            `${selectedPkg?.n} &mdash; ${convertAndFormatPrice(dbPrices[activeService.id]?.[selectedPkg!.n.replace(/[.#$\[\]]/g, "_")] ?? selectedPkg!.p)}`
+                            `${selectedPkg?.n}${quantity > 1 ? ` x${quantity}` : ""} — ${convertAndFormatPrice((dbPrices[activeService.id]?.[selectedPkg!.n.replace(/[.#$\[\]]/g, "_")] ?? selectedPkg!.p) * quantity)}`
                           )}
                         </h3>
                       </div>
 
+                      {/* Quantity Selector (Only if not USDT) */}
+                      {activeService.id !== "usdt" && (
+                        <div className="flex items-center justify-between bg-black/30 border border-zinc-900/60 p-4 rounded-2xl">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Quantity</span>
+                            <span className="text-[9px] text-zinc-600">Select purchase amount</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                              className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 font-bold flex items-center justify-center transition-all cursor-pointer active:scale-95"
+                            >
+                              -
+                            </button>
+                            <span className="w-8 text-center text-xs font-black font-mono text-white">
+                              {quantity}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setQuantity(quantity + 1)}
+                              className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 font-bold flex items-center justify-center transition-all cursor-pointer active:scale-95"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Display Dynamic Fields */}
                       <div className="space-y-4 text-xs font-mono">
-                        {activeService.fields.map((f, fIdx) => (
-                          <div key={fIdx}>
-                            <label className="text-zinc-400 block mb-1.5">{f.label}</label>
-                            {f.type === "select" ? (
-                              <select
-                                value={fieldsState[f.key] || ""}
-                                onChange={(e) => setFieldsState({ ...fieldsState, [f.key]: e.target.value })}
-                                className="w-full bg-black/50 border border-zinc-900 text-white px-4 py-3 rounded-xl focus:outline-none focus:border-brand-blue font-bold text-xs"
-                              >
-                                <option value="">-- Choose Option --</option>
-                                {f.options?.map((opt, oIdx) => (
-                                  <option key={oIdx} value={opt}>{opt}</option>
-                                ))}
-                              </select>
-                            ) : (
-                              <input
-                                type={f.type}
-                                placeholder={f.placeholder}
-                                value={fieldsState[f.key] || ""}
-                                onChange={(e) => setFieldsState({ ...fieldsState, [f.key]: e.target.value })}
-                                className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-brand-blue transition-all"
-                              />
-                            )}
+                        {activeService.category === "voucher" ? (
+                          <div className="p-4 bg-zinc-950/45 border border-zinc-900/80 rounded-2xl text-center space-y-1">
+                            <span className="text-emerald-500 font-orbitron font-extrabold tracking-wider uppercase text-[10px] block">⚡ Instant Delivery Voucher</span>
+                            <p className="text-[11px] text-zinc-400">No ID/UID required. The voucher code will be loaded instantly to your account!</p>
                           </div>
-                        ))}
+                        ) : (
+                          (activeService.category === "topup" && (!activeService.fields || activeService.fields.length === 0)
+                            ? [{ label: "Player UID", placeholder: "e.g. 5839218392", type: "text", key: "playerUid" }]
+                            : activeService.fields
+                          ).map((f, fIdx) => (
+                            <div key={fIdx}>
+                              <label className="text-zinc-400 block mb-1.5">{f.label}</label>
+                              {f.type === "select" ? (
+                                <select
+                                  value={fieldsState[f.key] || ""}
+                                  onChange={(e) => setFieldsState({ ...fieldsState, [f.key]: e.target.value })}
+                                  className="w-full bg-black/50 border border-zinc-900 text-white px-4 py-3 rounded-xl focus:outline-none focus:border-brand-blue font-bold text-xs"
+                                >
+                                  <option value="">-- Choose Option --</option>
+                                  {f.options?.map((opt, oIdx) => (
+                                    <option key={oIdx} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  type={f.type}
+                                  placeholder={f.placeholder}
+                                  value={fieldsState[f.key] || ""}
+                                  onChange={(e) => setFieldsState({ ...fieldsState, [f.key]: e.target.value })}
+                                  className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-brand-blue transition-all"
+                                />
+                              )}
+                            </div>
+                          ))
+                        )}
 
                         {/* USDT Dynamic Price Estimation Display */}
                         {activeService.id === "usdt" && fieldsState.cryptoAmount && fieldsState.txType && (

@@ -519,19 +519,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
     }
     const cleanId = newGameId.trim().toLowerCase().replace(/\s+/g, "_");
 
-    // Convert requirements selections to actual fields array
-    const fields = selectedGameReqs.map(reqId => {
-      const reqObj = globalRequirements.find(r => r.id === reqId);
-      return {
-        label: reqObj?.name || "Player UID",
-        placeholder: `e.g. enter ${reqObj?.name.toLowerCase()}`,
-        type: reqObj?.type || "text",
-        key: reqObj?.name.toLowerCase().replace(/\s+/g, "") || "playerUid"
-      };
-    });
-
-    // Default fields if empty
-    const finalFields = fields.length > 0 ? fields : [
+    const finalFields = [
       { label: "Player UID", placeholder: "e.g. 5839218392", type: "text", key: "playerUid" }
     ];
 
@@ -563,17 +551,8 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
   const handleEditGameSave = async () => {
     if (!editingGameId) return;
 
-    const fields = editGameReqs.map(reqId => {
-      const reqObj = globalRequirements.find(r => r.id === reqId);
-      return {
-        label: reqObj?.name || "Player UID",
-        placeholder: `e.g. enter ${reqObj?.name.toLowerCase()}`,
-        type: reqObj?.type || "text",
-        key: reqObj?.name.toLowerCase().replace(/\s+/g, "") || "playerUid"
-      };
-    });
-
-    const finalFields = fields.length > 0 ? fields : [
+    const existingGame = dbGames.find(g => g.id === editingGameId);
+    const finalFields = existingGame?.fields || [
       { label: "Player UID", placeholder: "e.g. 5839218392", type: "text", key: "playerUid" }
     ];
 
@@ -1900,33 +1879,6 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                                 onChange={(e) => setEditGameDesc(e.target.value)}
                                 className="w-full bg-black border border-zinc-900 rounded-lg p-2 text-white focus:outline-none focus:border-red-500"
                               />
-                            </div>
-                          </div>
-
-                          {/* Requirements Selection for Edit */}
-                          <div>
-                            <label className="text-zinc-600 block text-[8px] uppercase mb-1.5">Game Checkout Fields</label>
-                            <div className="grid grid-cols-2 gap-2 p-2.5 bg-black rounded-lg border border-zinc-900">
-                              {globalRequirements.map(req => {
-                                const isChecked = editGameReqs.includes(req.id);
-                                return (
-                                  <label key={req.id} className="flex items-center gap-1.5 cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      checked={isChecked}
-                                      onChange={() => {
-                                        if (isChecked) {
-                                          setEditGameReqs(editGameReqs.filter(id => id !== req.id));
-                                        } else {
-                                          setEditGameReqs([...editGameReqs, req.id]);
-                                        }
-                                      }}
-                                      className="accent-red-600"
-                                    />
-                                    <span className="text-[10px] text-zinc-400">{req.name}</span>
-                                  </label>
-                                );
-                              })}
                             </div>
                           </div>
 
