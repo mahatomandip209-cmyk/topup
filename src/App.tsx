@@ -103,7 +103,12 @@ export default function App() {
   const [activeCurrency, setActiveCurrency] = useState<"NPR" | "AED" | "USD">("NPR");
 
   // Category selection state
-  const [selectedCategory, setSelectedCategory] = useState<"topup" | "voucher" | "subscription">("topup");
+  const [selectedCategory, setSelectedCategory] = useState<string>("topup");
+  const [dbCategories, setDbCategories] = useState<any[]>([
+    { id: "topup", name: "Direct Top-up" },
+    { id: "voucher", name: "Voucher Code" },
+    { id: "subscription", name: "Premium Subscription" }
+  ]);
 
   // Active service selection (one of the 10 services)
   const [activeService, setActiveService] = useState<ServiceItem | null>(null);
@@ -124,22 +129,77 @@ export default function App() {
     esewaNum: "9825880400"
   });
 
-  // Listen to games and payment settings
+  // Listen to games, categories and payment settings
   useEffect(() => {
     const gamesRef = ref(db, "games");
     const unsubscribeGames = onValue(gamesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const list = Array.isArray(data) ? data : Object.values(data);
-        const cleanList = list.filter(Boolean).map((game: any) => ({
-          ...game,
-          packages: game.packages ? (Array.isArray(game.packages) ? game.packages : Object.values(game.packages)) : []
-        }));
-        setDbServices(cleanList);
+        let list: any[] = [];
+        if (Array.isArray(data)) {
+          list = data.map((game, idx) => {
+            if (!game) return null;
+            return {
+              ...game,
+              id: game.id || String(idx),
+              packages: game.packages ? (Array.isArray(game.packages) ? game.packages : Object.values(game.packages)) : []
+            };
+          }).filter(Boolean);
+        } else if (typeof data === "object") {
+          list = Object.keys(data).map(key => {
+            const game = data[key];
+            if (!game) return null;
+            return {
+              ...game,
+              id: game.id || key,
+              packages: game.packages ? (Array.isArray(game.packages) ? game.packages : Object.values(game.packages)) : []
+            };
+          }).filter(Boolean);
+        }
+        setDbServices(list);
       } else {
         // Seed default games
         set(gamesRef, servicesData);
         setDbServices(servicesData);
+      }
+    });
+
+    const categoriesRef = ref(db, "categories");
+    const unsubscribeCategories = onValue(categoriesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        let list: any[] = [];
+        if (Array.isArray(data)) {
+          list = data.map((item, idx) => {
+            if (!item) return null;
+            if (typeof item === "string") {
+              return { id: item, name: item.charAt(0).toUpperCase() + item.slice(1) };
+            }
+            if (typeof item === "object") {
+              return { 
+                id: item.id || String(idx), 
+                name: item.name || item.id || String(idx) 
+              };
+            }
+            return null;
+          }).filter(Boolean);
+        } else if (typeof data === "object") {
+          list = Object.keys(data).map(k => {
+            const val = data[k];
+            if (!val) return null;
+            if (typeof val === "string") {
+              return { id: k, name: val };
+            }
+            if (typeof val === "object") {
+              return { 
+                id: k, 
+                name: val.name || val.id || k 
+              };
+            }
+            return { id: k, name: k };
+          }).filter(Boolean);
+        }
+        setDbCategories(list);
       }
     });
 
@@ -162,6 +222,7 @@ export default function App() {
 
     return () => {
       unsubscribeGames();
+      unsubscribeCategories();
       unsubscribePayment();
     };
   }, [db]);
@@ -1025,24 +1086,20 @@ export default function App() {
                   className="space-y-6"
                 >
                   {/* Category Tabs Selector with Red Glowing Design */}
-                  <div className="flex justify-center gap-2.5 pb-2 border-b border-zinc-900/40">
-                    {[
-                      { id: "topup", label: "Topup" },
-                      { id: "voucher", label: "Voucher" },
-                      { id: "subscription", label: "Subscription" }
-                    ].map((cat) => {
+                  <div className="flex justify-center gap-2.5 pb-2 border-b border-zinc-900/40 flex-wrap">
+                    {dbCategories.map((cat) => {
                       const isActive = selectedCategory === cat.id;
                       return (
                         <button
                           key={cat.id}
-                          onClick={() => setSelectedCategory(cat.id as any)}
-                          className={`flex-1 max-w-[120px] py-2.5 rounded-xl font-orbitron font-extrabold text-[11px] uppercase tracking-wider transition-all duration-300 border cursor-pointer text-center ${
+                          onClick={() => setSelectedCategory(cat.id)}
+                          className={`px-4 py-2.5 rounded-xl font-orbitron font-extrabold text-[11px] uppercase tracking-wider transition-all duration-300 border cursor-pointer text-center ${
                             isActive
                               ? "bg-red-950/45 border-red-600 text-red-500 shadow-[0_0_15px_rgba(220,38,38,0.65)] scale-105"
                               : "bg-black/40 border-zinc-900 text-zinc-500 hover:text-zinc-300 hover:border-zinc-800"
                           }`}
                         >
-                          {cat.label}
+                          {cat.name}
                         </button>
                       );
                     })}

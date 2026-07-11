@@ -180,13 +180,28 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
     const unsubscribeGames = onValue(gamesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const list = Array.isArray(data) ? data : Object.values(data);
-        const cleanList = list.filter(Boolean).map((game: any) => ({
-          ...game,
-          id: game.id || "",
-          packages: game.packages ? (Array.isArray(game.packages) ? game.packages : Object.values(game.packages)) : []
-        }));
-        setDbGames(cleanList);
+        let list: any[] = [];
+        if (Array.isArray(data)) {
+          list = data.map((game, idx) => {
+            if (!game) return null;
+            return {
+              ...game,
+              id: game.id || String(idx),
+              packages: game.packages ? (Array.isArray(game.packages) ? game.packages : Object.values(game.packages)) : []
+            };
+          }).filter(Boolean);
+        } else if (typeof data === "object") {
+          list = Object.keys(data).map(key => {
+            const game = data[key];
+            if (!game) return null;
+            return {
+              ...game,
+              id: game.id || key,
+              packages: game.packages ? (Array.isArray(game.packages) ? game.packages : Object.values(game.packages)) : []
+            };
+          }).filter(Boolean);
+        }
+        setDbGames(list);
       } else {
         setDbGames([]);
       }
@@ -238,10 +253,38 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
     const unsubscribeCategories = onValue(categoriesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const list = Array.isArray(data)
-          ? data
-          : Object.keys(data).map(k => ({ id: k, ...data[k] }));
-        setDbCategories(list.filter(Boolean));
+        let list: any[] = [];
+        if (Array.isArray(data)) {
+          list = data.map((item, idx) => {
+            if (!item) return null;
+            if (typeof item === "string") {
+              return { id: item, name: item.charAt(0).toUpperCase() + item.slice(1) };
+            }
+            if (typeof item === "object") {
+              return { 
+                id: item.id || String(idx), 
+                name: item.name || item.id || String(idx) 
+              };
+            }
+            return null;
+          }).filter(Boolean);
+        } else if (typeof data === "object") {
+          list = Object.keys(data).map(k => {
+            const val = data[k];
+            if (!val) return null;
+            if (typeof val === "string") {
+              return { id: k, name: val };
+            }
+            if (typeof val === "object") {
+              return { 
+                id: k, 
+                name: val.name || val.id || k 
+              };
+            }
+            return { id: k, name: k };
+          }).filter(Boolean);
+        }
+        setDbCategories(list);
       } else {
         const defaultCats: Record<string, { name: string }> = {
           topup: { name: "Direct Top-up" },
@@ -1513,17 +1556,6 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                           className="w-full bg-black border border-zinc-900 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-red-500 font-sans text-xs"
                         />
                       </div>
-
-                      <div>
-                        <label className="text-zinc-400 block mb-1 uppercase text-[9px] font-bold">Category slug / ID (No spaces)</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. pc_games"
-                          value={newCategoryId}
-                          onChange={(e) => setNewCategoryId(e.target.value)}
-                          className="w-full bg-black border border-zinc-900 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-red-500 font-sans text-xs"
-                        />
-                      </div>
                     </div>
 
                     <div className="flex gap-3 pt-2 font-mono">
@@ -1853,11 +1885,11 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                               <select
                                 value={editGameCategory}
                                 onChange={(e) => setEditGameCategory(e.target.value as any)}
-                                className="w-full bg-black border border-zinc-900 rounded-lg p-2 text-white uppercase focus:outline-none"
+                                className="w-full bg-black border border-zinc-900 rounded-lg p-2 text-white uppercase focus:outline-none text-xs"
                               >
-                                <option value="topup">topup</option>
-                                <option value="voucher">voucher</option>
-                                <option value="subscription">subscription</option>
+                                {dbCategories.map(cat => (
+                                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                ))}
                               </select>
                             </div>
                             <div>
