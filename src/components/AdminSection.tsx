@@ -656,7 +656,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
     const updatedPkgs = [...existingPackages, newPkg];
 
     try {
-      await set(ref(db, `games/${selectedProductGameId}/packages`), updatedPkgs);
+      await update(ref(db, `games/${selectedProductGameId}`), { packages: updatedPkgs });
       setNewPackageName("");
       setNewPackagePrice("");
       setIsAddProductModalOpen(false);
@@ -683,7 +683,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
     packages[idx] = { n: nameStr, p: priceNum };
 
     try {
-      await set(ref(db, `games/${selectedProductGameId}/packages`), packages);
+      await update(ref(db, `games/${selectedProductGameId}`), { packages });
       setEditingPkgIdx(null);
       alert("Package updated successfully!");
     } catch (err: any) {
@@ -700,7 +700,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
       const packages = [...gameObj.packages].filter((_, i) => i !== idx);
 
       try {
-        await set(ref(db, `games/${selectedProductGameId}/packages`), packages);
+        await update(ref(db, `games/${selectedProductGameId}`), { packages });
         alert("Package deleted.");
       } catch (err: any) {
         alert("Error deleting package: " + err.message);

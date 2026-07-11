@@ -671,7 +671,7 @@ export default function App() {
       // Deduct balance if purchasing
       if (finalPriceNPR > 0) {
         const newBal = userData.balance - finalPriceNPR;
-        await set(ref(db, `users/${currentUser.uid}/balance`), newBal);
+        await update(ref(db, `users/${currentUser.uid}`), { balance: newBal });
       }
 
       // Push order to global node for admin auditing and individual user node
