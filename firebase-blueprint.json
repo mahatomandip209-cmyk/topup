@@ -1,0 +1,89 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information and balance",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "uniqueId": { "type": "string" },
+        "balance": { "type": "number" },
+        "blocked": { "type": "boolean" },
+        "phone": { "type": "string" },
+        "country": { "type": "string" },
+        "referralCode": { "type": "string" },
+        "avatarId": { "type": "string" },
+        "role": { "type": "string" }
+      },
+      "required": ["name", "email", "uniqueId", "balance", "blocked", "role"]
+    },
+    "Game": {
+      "title": "Game",
+      "description": "Top-up game and its field configurations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "image": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "fields": { "type": "array" },
+        "packages": { "type": "array" }
+      },
+      "required": ["id", "name", "category", "fields"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Order for game top-up",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string" },
+        "uid": { "type": "string" },
+        "gameId": { "type": "string" },
+        "gameName": { "type": "string" },
+        "pkgName": { "type": "string" },
+        "price": { "type": "number" },
+        "fields": { "type": "object" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      }
+    },
+    "Deposit": {
+      "title": "Deposit",
+      "description": "Funds deposit request",
+      "type": "object",
+      "properties": {
+        "depositId": { "type": "string" },
+        "uid": { "type": "string" },
+        "amount": { "type": "number" },
+        "method": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "games/{gameId}": {
+      "schema": "Game",
+      "description": "Games"
+    },
+    "all_orders/{orderId}": {
+      "schema": "Order",
+      "description": "All Orders"
+    },
+    "orders/{userId}/{orderId}": {
+      "schema": "Order",
+      "description": "User specific orders"
+    },
+    "deposits/{depositId}": {
+      "schema": "Deposit",
+      "description": "Deposits"
+    }
+  }
+}

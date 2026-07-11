@@ -6,8 +6,9 @@ import {
   update,
   remove,
   set,
-  push
-} from "firebase/database";
+  push,
+  get
+} from "../firebase";
 import {
   Menu,
   X,

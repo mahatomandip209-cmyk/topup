@@ -6,8 +6,9 @@ import {
   set,
   update,
   push,
-  get
-} from "firebase/database";
+  get,
+  remove
+} from "./firebase";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -94,6 +95,9 @@ export default function App() {
   const [regPhone, setRegPhone] = useState("");
   const [regCountry, setRegCountry] = useState("Nepal");
   const [regReferral, setRegReferral] = useState("");
+
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authSuccess, setAuthSuccess] = useState<string | null>(null);
 
   // Multi-Currency State
   const [activeCurrency, setActiveCurrency] = useState<"NPR" | "AED" | "USD">("NPR");
@@ -386,15 +390,18 @@ export default function App() {
   // Auth Operations
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
+    setAuthSuccess(null);
     if (!loginEmail || !loginPass) {
-      alert("Please enter both email and password.");
+      setAuthError("Please enter both email and password.");
       return;
     }
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, loginEmail, loginPass);
+      setAuthSuccess("Logged in successfully!");
     } catch (err: any) {
-      alert(err.message || "Login failed");
+      setAuthError(err.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -402,12 +409,24 @@ export default function App() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
+    setAuthSuccess(null);
     if (!regName || !regEmail || !regPass || !regPhone) {
-      alert("Please fill all required fields (Name, Email, Password, and WhatsApp Number).");
+      setAuthError("Please fill all required fields (Name, Email, Password, and WhatsApp Number).");
       return;
     }
     setLoading(true);
     try {
+      // Check if WhatsApp number is already registered
+      const usersSnap = await get(ref(db, "users"));
+      const usersData = usersSnap.val() || {};
+      const phoneExists = Object.values(usersData).some((u: any) => u.phone === regPhone);
+      if (phoneExists) {
+        setAuthError("WhatsApp number is already registered.");
+        setLoading(false);
+        return;
+      }
+
       const res = await createUserWithEmailAndPassword(auth, regEmail, regPass);
       const uniqueId = "BNY-" + Math.floor(10000 + Math.random() * 90000);
       await set(ref(db, `users/${res.user.uid}`), {
@@ -422,8 +441,13 @@ export default function App() {
         avatarId: "vanguard",
         role: regEmail === "mandipmahato717@gmail.com" ? "admin" : "user"
       });
+      setAuthSuccess("Account created successfully!");
     } catch (err: any) {
-      alert(err.message || "Registration failed");
+      if (err.code === "auth/email-already-in-use" || err.message?.includes("email-already-in-use")) {
+        setAuthError("Email already in use");
+      } else {
+        setAuthError(err.message || "Registration failed");
+      }
     } finally {
       setLoading(false);
     }
@@ -751,6 +775,17 @@ export default function App() {
                   <p className="text-xs text-zinc-400 mt-1">Access your store wallets and order tracker</p>
                 </div>
 
+                {authError && (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-xs font-semibold text-red-400 text-center leading-relaxed">
+                    {authError}
+                  </div>
+                )}
+                {authSuccess && (
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 text-xs font-semibold text-emerald-400 text-center leading-relaxed">
+                    {authSuccess}
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Email Address</label>
                   <div className="relative">
@@ -759,7 +794,7 @@ export default function App() {
                       type="email"
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      placeholder="Enter register email address"
+                      placeholder="Email Address"
                       className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-10 py-3 rounded-xl focus:outline-none focus:border-brand-blue transition-all font-mono text-sm"
                       required
                     />
@@ -797,63 +832,60 @@ export default function App() {
                 </button>
 
                 <p className="text-center text-zinc-400 text-xs mt-6">
-                  Not a store partner?{" "}
+                  Don't have an account?{" "}
                   <span
                     className="text-brand-orange cursor-pointer hover:underline font-extrabold"
-                    onClick={() => setAuthView("register")}
+                    onClick={() => {
+                      setAuthView("register");
+                      setAuthError(null);
+                      setAuthSuccess(null);
+                    }}
                   >
-                    Create Account
+                    Register
                   </span>
                 </p>
               </form>
             ) : (
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="text-center mb-1">
-                  <h2 className="text-lg font-orbitron font-extrabold tracking-widest text-white uppercase font-black">STORE PARTNER REGISTRATION</h2>
-                  <p className="text-zinc-500 text-[11px] mt-1">Join BNY SHOP and load wallet credits instantly</p>
+                  <h2 className="text-lg font-orbitron font-extrabold tracking-widest text-white uppercase font-black">CREATE ACCOUNT</h2>
                 </div>
 
+                {authError && (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-xs font-semibold text-red-400 text-center leading-relaxed">
+                    {authError}
+                  </div>
+                )}
+                {authSuccess && (
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 text-xs font-semibold text-emerald-400 text-center leading-relaxed">
+                    {authSuccess}
+                  </div>
+                )}
+
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Display Name</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Full Name</label>
                   <input
                     type="text"
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
-                    placeholder="Enter full display name"
+                    placeholder="Full Name"
                     className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue transition-all text-xs font-semibold"
                     required
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">WhatsApp Number</label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
-                      <input
-                        type="text"
-                        value={regPhone}
-                        onChange={(e) => setRegPhone(e.target.value)}
-                        placeholder="9825880400"
-                        className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-9 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue transition-all text-xs font-mono font-bold"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Country Location</label>
-                    <select
-                      value={regCountry}
-                      onChange={(e) => setRegCountry(e.target.value)}
-                      className="w-full bg-black/50 border border-zinc-900 text-white px-4 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue text-xs font-bold"
-                    >
-                      <option value="Nepal">Nepal</option>
-                      <option value="UAE">United Arab Emirates</option>
-                      <option value="Qatar">Qatar</option>
-                      <option value="Malaysia">Malaysia</option>
-                      <option value="Others">Others</option>
-                    </select>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">WhatsApp Number</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
+                    <input
+                      type="text"
+                      value={regPhone}
+                      onChange={(e) => setRegPhone(e.target.value)}
+                      placeholder="9825880400"
+                      className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-9 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue transition-all text-xs font-mono font-bold"
+                      required
+                    />
                   </div>
                 </div>
 
@@ -865,41 +897,25 @@ export default function App() {
                       type="email"
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
-                      placeholder="e.g. name@domain.com"
+                      placeholder="Email Address"
                       className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-10 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue transition-all font-mono text-xs"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Create Password</label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
-                      <input
-                        type="password"
-                        value={regPass}
-                        onChange={(e) => setRegPass(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-9 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue transition-all font-mono text-xs"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Referral (Optional)</label>
-                    <div className="relative">
-                      <Gift className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
-                      <input
-                        type="text"
-                        value={regReferral}
-                        onChange={(e) => setRegReferral(e.target.value)}
-                        placeholder="e.g. BNY-552"
-                        className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-9 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue transition-all font-mono text-xs"
-                      />
-                    </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Create Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
+                    <input
+                      type="password"
+                      value={regPass}
+                      onChange={(e) => setRegPass(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-9 py-2.5 rounded-xl focus:outline-none focus:border-brand-blue transition-all font-mono text-xs"
+                      required
+                    />
                   </div>
                 </div>
 
@@ -913,7 +929,7 @@ export default function App() {
                   ) : (
                     <>
                       <UserCheck className="w-4 h-4" />
-                      INITIALIZE ACCOUNT
+                      CREATE ACCOUNT
                     </>
                   )}
                 </button>
@@ -922,7 +938,11 @@ export default function App() {
                   Already registered?{" "}
                   <span
                     className="text-brand-orange cursor-pointer hover:underline font-extrabold"
-                    onClick={() => setAuthView("login")}
+                    onClick={() => {
+                      setAuthView("login");
+                      setAuthError(null);
+                      setAuthSuccess(null);
+                    }}
                   >
                     Login
                   </span>
@@ -1124,7 +1144,7 @@ export default function App() {
                         <label className="text-zinc-400 block mb-1 uppercase font-bold text-[10px]">Deposit Amount (NPR)</label>
                         <input
                           type="number"
-                          placeholder="e.g. 1000"
+                          placeholder=""
                           value={walletAmt}
                           onChange={(e) => setWalletAmt(e.target.value)}
                           className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-red-600 transition-all shadow-inner"
@@ -1135,7 +1155,7 @@ export default function App() {
                         <label className="text-zinc-400 block mb-1 uppercase font-bold text-[10px]">Transaction Code / Ref ID</label>
                         <input
                           type="text"
-                          placeholder="Enter exact Transaction Reference ID"
+                          placeholder=""
                           value={esewaTrx}
                           onChange={(e) => setEsewaTrx(e.target.value)}
                           className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-red-600 transition-all shadow-inner"
