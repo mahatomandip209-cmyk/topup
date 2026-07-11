@@ -751,7 +751,7 @@ export default function App() {
       )}
 
       {/* AUTH SCREEN VIEW */}
-      {!currentUser && !authInitializing && (
+      {!currentUser && !authInitializing && !isAdmin && (
         <div id="auth-screen" className="flex-1 flex flex-col justify-center items-center px-4 py-12 bg-[radial-gradient(circle_at_center,_#0b162c_0%,_#040810_100%)]">
           <motion.div
             initial={{ y: -15, opacity: 0 }}
@@ -954,7 +954,7 @@ export default function App() {
       )}
 
       {/* MAIN APPLICATION INTERFACE */}
-      {currentUser && !authInitializing && (
+      {(currentUser || isAdmin) && !authInitializing && (
         <div id="app-content" className={`flex-1 flex flex-col w-full ${activeSection === "admin" && isAdmin ? "max-w-6xl" : "max-w-3xl"} mx-auto pb-24 shadow-2xl min-h-screen bg-bg-navy border-x border-zinc-900/40 transition-all duration-300`}>
           {/* Header Bar */}
           <header className="sticky top-0 bg-bg-navy/90 backdrop-blur-md px-5 py-4 flex justify-between items-center border-b border-red-600/20 z-50">
