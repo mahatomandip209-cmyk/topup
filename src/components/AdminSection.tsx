@@ -34,7 +34,9 @@ import {
   Upload,
   ClipboardList,
   Eye,
-  EyeOff
+  EyeOff,
+  Tags,
+  ArrowLeft
 } from "lucide-react";
 import { ServiceItem, GamePackage } from "../data/packages";
 
@@ -48,16 +50,27 @@ interface AdminSectionProps {
 export default function AdminSection({ db, currentUser, services, setActiveSection }: AdminSectionProps) {
   // Sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [adminTab, setAdminTab] = useState<"dashboard" | "orders" | "deposits" | "users" | "games" | "products" | "qrcode" | "requirements" | "banners">("dashboard");
+  const [adminTab, setAdminTab] = useState<"dashboard" | "orders" | "deposits" | "users" | "categories" | "games" | "products" | "qrcode" | "requirements" | "banners">("dashboard");
 
   // Dynamic state loaded from DB
   const [dbGames, setDbGames] = useState<any[]>([]);
+  const [dbCategories, setDbCategories] = useState<any[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [allDeposits, setAllDeposits] = useState<any[]>([]);
   const [globalRequirements, setGlobalRequirements] = useState<any[]>([]);
   const [paymentSettings, setPaymentSettings] = useState<any>({ qrCode: "", esewaNum: "" });
   const [currentBanners, setCurrentBanners] = useState<string[]>([]);
+
+  // Category CRUD state
+  const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryId, setNewCategoryId] = useState("");
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState("");
+
+  // Product modal state
+  const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
 
   // Search filter inputs
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,7 +94,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
   const [newGameId, setNewGameId] = useState("");
   const [newGameName, setNewGameName] = useState("");
   const [newGameImage, setNewGameImage] = useState("");
-  const [newGameCategory, setNewGameCategory] = useState<"topup" | "voucher" | "subscription">("topup");
+  const [newGameCategory, setNewGameCategory] = useState<string>("topup");
   const [newGameDesc, setNewGameDesc] = useState("");
   const [selectedGameReqs, setSelectedGameReqs] = useState<string[]>([]);
 
@@ -89,7 +102,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
   const [editingGameId, setEditingGameId] = useState<string | null>(null);
   const [editGameName, setEditGameName] = useState("");
   const [editGameImage, setEditGameImage] = useState("");
-  const [editGameCategory, setEditGameCategory] = useState<"topup" | "voucher" | "subscription">("topup");
+  const [editGameCategory, setEditGameCategory] = useState<string>("topup");
   const [editGameDesc, setEditGameDesc] = useState("");
   const [editGameReqs, setEditGameReqs] = useState<string[]>([]);
 
@@ -167,8 +180,13 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
     const unsubscribeGames = onValue(gamesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const list = Array.isArray(data) ? data : Object.keys(data).map(k => ({ id: k, ...data[k] }));
-        setDbGames(list.filter(Boolean));
+        const list = Array.isArray(data) ? data : Object.values(data);
+        const cleanList = list.filter(Boolean).map((game: any) => ({
+          ...game,
+          id: game.id || "",
+          packages: game.packages ? (Array.isArray(game.packages) ? game.packages : Object.values(game.packages)) : []
+        }));
+        setDbGames(cleanList);
       } else {
         setDbGames([]);
       }
@@ -215,6 +233,30 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
       }
     });
 
+    // 8. Fetch Categories (Seed defaults if empty)
+    const categoriesRef = ref(db, "categories");
+    const unsubscribeCategories = onValue(categoriesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Array.isArray(data)
+          ? data
+          : Object.keys(data).map(k => ({ id: k, ...data[k] }));
+        setDbCategories(list.filter(Boolean));
+      } else {
+        const defaultCats: Record<string, { name: string }> = {
+          topup: { name: "Direct Top-up" },
+          voucher: { name: "Voucher Code" },
+          subscription: { name: "Premium Subscription" }
+        };
+        set(categoriesRef, defaultCats);
+        setDbCategories([
+          { id: "topup", name: "Direct Top-up" },
+          { id: "voucher", name: "Voucher Code" },
+          { id: "subscription", name: "Premium Subscription" }
+        ]);
+      }
+    });
+
     return () => {
       unsubscribeUsers();
       unsubscribeAllOrders();
@@ -223,6 +265,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
       unsubscribeReqs();
       unsubscribePayment();
       unsubscribeBanners();
+      unsubscribeCategories();
     };
   }, [db]);
 
@@ -256,7 +299,12 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
         targetUid: selectedUser.uid
       });
 
-      setSelectedUser({ ...selectedUser, balance: newBalance });
+      if (type === "add") {
+        setShowPasswords(prev => ({ ...prev, [selectedUser.uid]: true }));
+        setSelectedUser(null);
+      } else {
+        setSelectedUser({ ...selectedUser, balance: newBalance });
+      }
       setAdjustAmount("");
       setAdjustNote("");
       alert(`Successfully updated user wallet balance to NPR ${newBalance}`);
@@ -512,6 +560,53 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
     }
   };
 
+  // ---------------- CATEGORIES CRUD ----------------
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      alert("Category Name is required");
+      return;
+    }
+    const slug = newCategoryId.trim() || newCategoryName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+    try {
+      await set(ref(db, `categories/${slug}`), {
+        name: newCategoryName.trim()
+      });
+      setNewCategoryName("");
+      setNewCategoryId("");
+      setIsAddCategoryModalOpen(false);
+      alert("Category added successfully!");
+    } catch (err: any) {
+      alert("Error adding category: " + err.message);
+    }
+  };
+
+  const handleEditCategorySave = async () => {
+    if (!editingCategoryId || !editCategoryName.trim()) {
+      alert("Category Name is required");
+      return;
+    }
+    try {
+      await update(ref(db, `categories/${editingCategoryId}`), {
+        name: editCategoryName.trim()
+      });
+      setEditingCategoryId(null);
+      alert("Category updated successfully!");
+    } catch (err: any) {
+      alert("Error updating category: " + err.message);
+    }
+  };
+
+  const handleDeleteCategory = async (catId: string) => {
+    if (confirm(`Are you sure you want to delete category "${catId}"?`)) {
+      try {
+        await remove(ref(db, `categories/${catId}`));
+        alert("Category deleted successfully!");
+      } catch (err: any) {
+        alert("Error deleting category: " + err.message);
+      }
+    }
+  };
+
   // ---------------- PRODUCTS (PACKAGES) CRUD ----------------
   const handleAddPackage = async () => {
     if (!selectedProductGameId) {
@@ -542,6 +637,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
       await set(ref(db, `games/${selectedProductGameId}/packages`), updatedPkgs);
       setNewPackageName("");
       setNewPackagePrice("");
+      setIsAddProductModalOpen(false);
       alert("Product package added successfully!");
     } catch (err: any) {
       alert("Error adding package: " + err.message);
@@ -770,7 +866,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
             <Menu className="w-5 h-5 text-red-500 animate-pulse" />
           </button>
           
-          {adminTab !== "games" ? (
+          {adminTab !== "games" && adminTab !== "categories" ? (
             <div>
               <h2 className="font-orbitron font-extrabold text-lg text-white tracking-wider uppercase flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-red-500" /> BNY Desk
@@ -784,6 +880,15 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                 {adminTab === "qrcode" && "Payment settings details"}
                 {adminTab === "requirements" && "Dynamic Order Requirements manager"}
                 {adminTab === "banners" && "Slide banners manager"}
+              </p>
+            </div>
+          ) : adminTab === "categories" ? (
+            <div>
+              <h2 className="font-orbitron font-extrabold text-lg text-white tracking-wider uppercase flex items-center gap-2">
+                Manage Categories
+              </h2>
+              <p className="text-[10px] text-zinc-500 font-mono tracking-wider uppercase">
+                Add, Edit, and Delete categories for Game Items
               </p>
             </div>
           ) : (
@@ -862,6 +967,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                     { id: "orders", label: `Orders (${pendingOrdersCount})`, icon: ClipboardList },
                     { id: "deposits", label: `Deposits (${pendingDepositsCount})`, icon: Wallet },
                     { id: "users", label: `User Balances (${allUsers.length})`, icon: Users },
+                    { id: "categories", label: `Categories (${dbCategories.length})`, icon: Tags },
                     { id: "games", label: "Games", icon: Database },
                     { id: "products", label: "Products", icon: ShoppingCart },
                     { id: "qrcode", label: "QR Code & Payments", icon: QrCode },
@@ -1340,6 +1446,200 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
           </div>
         )}
 
+        {/* 1.4 CATEGORIES SECTION */}
+        {adminTab === "categories" && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-900">
+              <div>
+                <h3 className="font-orbitron font-extrabold text-lg uppercase tracking-widest text-white flex items-center gap-2">
+                  <Tags className="w-5 h-5 text-red-500" /> CATEGORIES
+                </h3>
+                <p className="text-[10px] text-zinc-500 font-mono tracking-wider">
+                  Manage game classifications and structures
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setNewCategoryName("");
+                  setNewCategoryId("");
+                  setIsAddCategoryModalOpen(true);
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white font-mono font-bold text-xs uppercase tracking-wider px-5 py-3 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 self-start sm:self-auto"
+              >
+                <Plus className="w-4 h-4" />
+                Add Category Option
+              </button>
+            </div>
+
+            {/* ADD CATEGORY POPUP MODAL */}
+            <AnimatePresence>
+              {isAddCategoryModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="bg-[#0b111e] border border-zinc-900 rounded-3xl p-6 w-full max-w-sm space-y-5 shadow-2xl relative"
+                  >
+                    <button
+                      onClick={() => setIsAddCategoryModalOpen(false)}
+                      className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+
+                    <div className="space-y-1">
+                      <h4 className="font-orbitron font-extrabold text-lg text-white uppercase tracking-wider">
+                        Add New Category
+                      </h4>
+                      <p className="text-xs text-zinc-500 font-sans">Enter details to create a new category</p>
+                    </div>
+
+                    <div className="space-y-4 font-mono text-xs text-left">
+                      <div>
+                        <label className="text-zinc-400 block mb-1 uppercase text-[9px] font-bold">Category Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. PC Games"
+                          value={newCategoryName}
+                          onChange={(e) => {
+                            setNewCategoryName(e.target.value);
+                            const slug = e.target.value
+                              .toLowerCase()
+                              .trim()
+                              .replace(/[^a-z0-9]+/g, "_");
+                            setNewCategoryId(slug);
+                          }}
+                          className="w-full bg-black border border-zinc-900 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-red-500 font-sans text-xs"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-zinc-400 block mb-1 uppercase text-[9px] font-bold">Category slug / ID (No spaces)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. pc_games"
+                          value={newCategoryId}
+                          onChange={(e) => setNewCategoryId(e.target.value)}
+                          className="w-full bg-black border border-zinc-900 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-red-500 font-sans text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-2 font-mono">
+                      <button
+                        onClick={() => setIsAddCategoryModalOpen(false)}
+                        className="flex-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 py-3 rounded-xl text-xs uppercase cursor-pointer transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleAddCategory}
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-xs uppercase cursor-pointer transition-colors shadow-lg shadow-red-500/20"
+                      >
+                        Create
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
+
+            {/* EDIT CATEGORY POPUP MODAL */}
+            <AnimatePresence>
+              {editingCategoryId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="bg-[#0b111e] border border-zinc-900 rounded-3xl p-6 w-full max-w-sm space-y-5 shadow-2xl relative"
+                  >
+                    <button
+                      onClick={() => setEditingCategoryId(null)}
+                      className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+
+                    <div className="space-y-1">
+                      <h4 className="font-orbitron font-extrabold text-lg text-white uppercase tracking-wider">
+                        Edit Category
+                      </h4>
+                      <p className="text-xs text-zinc-500 font-sans">Modify selected category name</p>
+                    </div>
+
+                    <div className="space-y-4 font-mono text-xs text-left">
+                      <div>
+                        <label className="text-zinc-400 block mb-1 uppercase text-[9px] font-bold">Category Name</label>
+                        <input
+                          type="text"
+                          value={editCategoryName}
+                          onChange={(e) => setEditCategoryName(e.target.value)}
+                          className="w-full bg-black border border-zinc-900 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-red-500 font-sans text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-2 font-mono">
+                      <button
+                        onClick={() => setEditingCategoryId(null)}
+                        className="flex-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 py-3 rounded-xl text-xs uppercase cursor-pointer transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleEditCategorySave}
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-xs uppercase cursor-pointer transition-colors shadow-lg shadow-red-500/20"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
+
+            {/* LIST OF CATEGORIES */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {dbCategories.length === 0 ? (
+                <div className="col-span-full bg-zinc-950/20 border border-zinc-900/60 rounded-3xl p-12 text-center">
+                  <p className="text-zinc-500 font-mono text-xs uppercase">No categories found in system.</p>
+                </div>
+              ) : (
+                dbCategories.map((cat) => (
+                  <div key={cat.id} className="bg-[#0c1322] border border-zinc-900 hover:border-zinc-800 rounded-3xl p-5 flex items-center justify-between gap-4 transition-all duration-300 shadow-xl">
+                    <div className="space-y-1 min-w-0">
+                      <span className="text-[10px] text-red-500 font-mono uppercase font-bold tracking-wider">Category</span>
+                      <h4 className="text-white font-sans font-bold text-sm truncate">{cat.name}</h4>
+                      <p className="text-[9px] text-zinc-500 font-mono">ID: {cat.id}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingCategoryId(cat.id);
+                          setEditCategoryName(cat.name);
+                        }}
+                        className="p-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white rounded-xl transition-all cursor-pointer"
+                        title="Edit Category"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCategory(cat.id)}
+                        className="p-2 bg-red-950/20 hover:bg-red-900/30 border border-red-900/30 text-red-500 rounded-xl transition-all cursor-pointer"
+                        title="Delete Category"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 2. GAMES CRUD EDITOR */}
         {adminTab === "games" && (
           <div className="space-y-6">
@@ -1456,14 +1756,6 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                               <button onClick={() => setNewGameImage("")} className="text-red-500 hover:text-red-400 text-[10px] cursor-pointer">Remove</button>
                             </div>
                           )}
-                          <div className="text-zinc-600 text-[9px] text-center uppercase tracking-widest font-extrabold my-1">or Enter Image URL</div>
-                          <input
-                            type="text"
-                            placeholder="e.g. https://i.ibb.co/..."
-                            value={newGameImage}
-                            onChange={(e) => setNewGameImage(e.target.value)}
-                            className="w-full bg-black border border-zinc-900 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-red-500 font-sans text-xs"
-                          />
                         </div>
                       </div>
 
@@ -1475,49 +1767,10 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                           onChange={(e) => setNewGameCategory(e.target.value as any)}
                           className="w-full bg-black border border-zinc-900 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-red-500 uppercase text-xs"
                         >
-                          <option value="topup">Direct Top-up</option>
-                          <option value="voucher">Voucher Code</option>
-                          <option value="subscription">Premium Subscription</option>
+                          {dbCategories.map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                          ))}
                         </select>
-                      </div>
-
-                      {/* Description */}
-                      <div>
-                        <label className="text-zinc-400 block mb-1 uppercase text-[9px] font-bold">Description Text</label>
-                        <input
-                          type="text"
-                          placeholder="Enter short game description..."
-                          value={newGameDesc}
-                          onChange={(e) => setNewGameDesc(e.target.value)}
-                          className="w-full bg-black border border-zinc-900 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-red-500 font-sans text-xs"
-                        />
-                      </div>
-
-                      {/* Requirements */}
-                      <div>
-                        <label className="text-zinc-400 block mb-2 uppercase text-[9px] font-bold">Checkout Input Fields</label>
-                        <div className="grid grid-cols-2 gap-2 p-3 bg-black rounded-xl border border-zinc-900 max-h-[120px] overflow-y-auto no-scrollbar">
-                          {globalRequirements.map(req => {
-                            const isChecked = selectedGameReqs.includes(req.id);
-                            return (
-                              <label key={req.id} className="flex items-center gap-2 cursor-pointer select-none">
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={() => {
-                                    if (isChecked) {
-                                      setSelectedGameReqs(selectedGameReqs.filter(id => id !== req.id));
-                                    } else {
-                                      setSelectedGameReqs([...selectedGameReqs, req.id]);
-                                    }
-                                  }}
-                                  className="rounded accent-red-600 cursor-pointer"
-                                />
-                                <span className="text-[10px] text-zinc-300 truncate">{req.name}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
                       </div>
                     </div>
 
@@ -1727,172 +1980,275 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
 
         {/* 3. PRODUCTS (PACKAGES) CRUD EDITOR */}
         {adminTab === "products" && (
-          <div className="space-y-5">
-            {/* GAME SELECTOR GRID */}
-            <div>
-              <label className="text-[10px] text-zinc-500 font-extrabold font-mono uppercase tracking-widest block mb-2">
-                Select Game Title to Customize Products
-              </label>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {dbGames.map(game => {
-                  const isSelected = selectedProductGameId === game.id;
-                  return (
-                    <button
-                      key={game.id}
-                      onClick={() => {
-                        setSelectedProductGameId(game.id);
-                        setEditingPkgIdx(null);
-                      }}
-                      className={`flex items-center gap-2 p-2 rounded-xl text-left border transition-all truncate text-xs font-mono font-bold cursor-pointer ${
-                        isSelected
-                          ? "bg-red-500/10 border-red-600 text-red-500"
-                          : "bg-black/30 border-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-900/20"
-                      }`}
-                    >
-                      <img src={game.image} className="w-6 h-6 rounded object-cover flex-shrink-0" />
-                      <span className="truncate">{game.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {selectedProductGameId ? (
-              // Selected Game Products view
-              <div className="space-y-4">
-                {/* ADD PRODUCT FORM */}
-                <div className="bg-black/30 border border-zinc-900 p-4 rounded-2xl space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-red-500 font-extrabold font-mono uppercase tracking-widest block">
-                      Add Product to {dbGames.find(g => g.id === selectedProductGameId)?.name}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-xs font-mono">
-                    <div>
-                      <label className="text-zinc-600 block text-[8px] uppercase font-bold mb-0.5">Package Quantity / Name</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 100 Diamonds"
-                        value={newPackageName}
-                        onChange={(e) => setNewPackageName(e.target.value)}
-                        className="w-full bg-black border border-zinc-900 rounded-lg p-2 text-white focus:outline-none focus:border-red-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-zinc-600 block text-[8px] uppercase font-bold mb-0.5">Price in NPR (Rs.)</label>
-                      <input
-                        type="number"
-                        placeholder="e.g. 110"
-                        value={newPackagePrice}
-                        onChange={(e) => setNewPackagePrice(e.target.value)}
-                        className="w-full bg-black border border-zinc-900 rounded-lg p-2 text-white focus:outline-none focus:border-red-500"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleAddPackage}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-xs uppercase font-mono cursor-pointer transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add Product Option
-                  </button>
+          <div className="space-y-6 animate-fadeIn">
+            {selectedProductGameId === "" ? (
+              // STEP 1: SHOW ALL AVAILABLE GAMES LIST/GRID
+              <div className="space-y-5">
+                <div>
+                  <h3 className="font-orbitron font-extrabold text-lg uppercase tracking-widest text-white flex items-center gap-2">
+                    <ShoppingCart className="w-5 h-5 text-red-500" /> PRODUCTS
+                  </h3>
+                  <p className="text-[10px] text-zinc-500 font-mono tracking-wider">
+                    Select a game to manage its product items & prices
+                  </p>
                 </div>
 
-                {/* CURRENT PACKAGES LIST */}
-                <div className="space-y-3">
-                  <span className="text-[10px] text-zinc-500 font-extrabold font-mono uppercase tracking-widest block">
-                    Product Packages List ({dbGames.find(g => g.id === selectedProductGameId)?.packages?.length || 0})
-                  </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {dbGames.length === 0 ? (
+                    <div className="col-span-full bg-zinc-950/20 border border-zinc-900/60 rounded-3xl p-12 text-center">
+                      <p className="text-zinc-500 font-mono text-xs uppercase">No games found in system.</p>
+                    </div>
+                  ) : (
+                    dbGames.map((game) => (
+                      <div
+                        key={game.id}
+                        onClick={() => {
+                          setSelectedProductGameId(game.id);
+                          setEditingPkgIdx(null);
+                        }}
+                        className="bg-[#0c1322] border border-zinc-900 hover:border-red-600/50 rounded-3xl p-5 flex items-center gap-4 transition-all duration-300 shadow-xl cursor-pointer hover:scale-[1.01] group relative overflow-hidden"
+                      >
+                        <img
+                          src={game.image}
+                          alt={game.name}
+                          className="w-16 h-16 object-cover rounded-2xl border border-zinc-900 flex-shrink-0 bg-black/40"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="space-y-1 min-w-0 flex-1">
+                          <span className="text-[8px] bg-red-600/10 text-red-500 border border-red-950/30 px-2 py-0.5 rounded-full font-mono uppercase font-extrabold">
+                            {game.category || "topup"}
+                          </span>
+                          <h4 className="text-white font-sans font-extrabold text-base truncate group-hover:text-red-500 transition-colors">{game.name}</h4>
+                          <p className="text-[10px] text-zinc-500 font-mono">
+                            {game.packages?.length || 0} Products available
+                          </p>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-zinc-600 group-hover:text-white transition-colors" />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            ) : (
+              // STEP 2: SHOW SPECIFIC GAME PRODUCTS MANAGEMENT "NEW PAGE"
+              <div className="space-y-6">
+                {(() => {
+                  const gameObj = dbGames.find(g => g.id === selectedProductGameId);
+                  if (!gameObj) {
+                    return (
+                      <div className="text-center py-12">
+                        <p className="text-zinc-500">Game not found.</p>
+                        <button
+                          onClick={() => setSelectedProductGameId("")}
+                          className="mt-4 bg-zinc-900 text-white font-mono px-4 py-2 rounded-xl"
+                        >
+                          Back to Games
+                        </button>
+                      </div>
+                    );
+                  }
 
-                  <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 no-scrollbar text-xs font-mono">
-                    {(() => {
-                      const gameObj = dbGames.find(g => g.id === selectedProductGameId);
-                      const packagesList = gameObj?.packages || [];
+                  const packagesList = gameObj.packages || [];
 
-                      if (packagesList.length === 0) {
-                        return (
-                          <div className="text-center py-10 bg-black/20 border border-zinc-900 rounded-2xl text-zinc-500">
-                            There are no products available for this game. Add products above!
+                  return (
+                    <>
+                      {/* SUB-HEADER AREA */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-900">
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setSelectedProductGameId("")}
+                            className="p-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl text-zinc-400 hover:text-white cursor-pointer transition-all mr-1"
+                            title="Back to Games list"
+                          >
+                            <ArrowLeft className="w-4.5 h-4.5" />
+                          </button>
+                          <img
+                            src={gameObj.image}
+                            alt={gameObj.name}
+                            className="w-12 h-12 object-cover rounded-xl border border-zinc-900 flex-shrink-0"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div>
+                            <h3 className="font-orbitron font-extrabold text-base text-white tracking-wider uppercase">
+                              {gameObj.name} Products
+                            </h3>
+                            <p className="text-[9px] text-zinc-500 font-mono uppercase tracking-wider">
+                              Category: {gameObj.category}
+                            </p>
                           </div>
-                        );
-                      }
+                        </div>
 
-                      return packagesList.map((pkg: any, idx: number) => {
-                        const isEditingPkg = editingPkgIdx === idx;
-                        return (
-                          <div key={idx} className="bg-black/40 border border-zinc-900 p-3 rounded-xl flex items-center justify-between gap-4">
-                            {isEditingPkg ? (
-                              <div className="flex-1 flex gap-2.5 items-end">
-                                <div className="flex-1">
+                        <button
+                          onClick={() => {
+                            setNewPackageName("");
+                            setNewPackagePrice("");
+                            setIsAddProductModalOpen(true);
+                          }}
+                          className="bg-red-600 hover:bg-red-700 text-white font-mono font-bold text-xs uppercase tracking-wider px-5 py-3 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 self-start sm:self-auto"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add Product Option
+                        </button>
+                      </div>
+
+                      {/* ADD PRODUCT MODAL */}
+                      <AnimatePresence>
+                        {isAddProductModalOpen && (
+                          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+                            <motion.div
+                              initial={{ scale: 0.95, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              exit={{ scale: 0.95, opacity: 0 }}
+                              className="bg-[#0b111e] border border-zinc-900 rounded-3xl p-6 w-full max-w-sm space-y-5 shadow-2xl relative"
+                            >
+                              <button
+                                onClick={() => setIsAddProductModalOpen(false)}
+                                className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                              >
+                                <X className="w-5 h-5" />
+                              </button>
+
+                              <div className="space-y-1">
+                                <h4 className="font-orbitron font-extrabold text-lg text-white uppercase tracking-wider">
+                                  Add Product Item
+                                </h4>
+                                <p className="text-xs text-zinc-500 font-sans">Input name and price for the new product</p>
+                              </div>
+
+                              <div className="space-y-4 font-mono text-xs text-left">
+                                <div>
+                                  <label className="text-zinc-400 block mb-1 uppercase text-[9px] font-bold">Product Name</label>
                                   <input
                                     type="text"
-                                    value={editPackageName}
-                                    onChange={(e) => setEditPackageName(e.target.value)}
-                                    className="w-full bg-black border border-zinc-800 rounded p-1.5 text-xs text-white"
+                                    placeholder="e.g. 100 Diamonds"
+                                    value={newPackageName}
+                                    onChange={(e) => setNewPackageName(e.target.value)}
+                                    className="w-full bg-black border border-zinc-900 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-red-500 font-sans text-xs"
                                   />
                                 </div>
-                                <div className="w-24">
+
+                                <div>
+                                  <label className="text-zinc-400 block mb-1 uppercase text-[9px] font-bold">Product Price (NPR)</label>
                                   <input
                                     type="number"
-                                    value={editPackagePrice}
-                                    onChange={(e) => setEditPackagePrice(e.target.value)}
-                                    className="w-full bg-black border border-zinc-800 rounded p-1.5 text-xs text-red-500 font-bold"
+                                    placeholder="e.g. 110"
+                                    value={newPackagePrice}
+                                    onChange={(e) => setNewPackagePrice(e.target.value)}
+                                    className="w-full bg-black border border-zinc-900 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-red-500 font-sans text-xs"
                                   />
                                 </div>
-                                <div className="flex gap-1 font-bold">
-                                  <button
-                                    onClick={() => setEditingPkgIdx(null)}
-                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 rounded text-[9px]"
-                                  >
-                                    CANCEL
-                                  </button>
-                                  <button
-                                    onClick={() => handleUpdatePackage(idx)}
-                                    className="px-2 py-1.5 bg-red-600 rounded text-white text-[9px]"
-                                  >
-                                    SAVE
-                                  </button>
-                                </div>
                               </div>
-                            ) : (
-                              <>
-                                <span className="font-bold text-white text-xs">{pkg.n}</span>
-                                <div className="flex items-center gap-3">
-                                  <strong className="text-red-500">NPR {pkg.p}</strong>
-                                  <div className="flex items-center gap-1.5">
-                                    <button
-                                      onClick={() => {
-                                        setEditingPkgIdx(idx);
-                                        setEditPackageName(pkg.n);
-                                        setEditPackagePrice(pkg.p.toString());
-                                      }}
-                                      className="p-1.5 hover:bg-zinc-900 text-zinc-500 hover:text-white border border-transparent hover:border-zinc-800 rounded-lg"
-                                    >
-                                      <Edit3 className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeletePackage(idx)}
-                                      className="p-1.5 hover:bg-red-950/25 text-zinc-500 hover:text-red-500 border border-transparent hover:border-red-900/20 rounded-lg"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </div>
-                              </>
-                            )}
+
+                              <div className="flex gap-3 pt-2 font-mono">
+                                <button
+                                  onClick={() => setIsAddProductModalOpen(false)}
+                                  className="flex-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 py-3 rounded-xl text-xs uppercase cursor-pointer transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={handleAddPackage}
+                                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-xs uppercase cursor-pointer transition-colors shadow-lg shadow-red-500/20"
+                                >
+                                  Add Product
+                                </button>
+                              </div>
+                            </motion.div>
                           </div>
-                        );
-                      });
-                    })()}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-              <div className="text-center py-16 text-zinc-500 text-xs font-mono bg-black/10 border border-zinc-900 rounded-3xl">
-                Please select a game from the options above to edit or add its product catalog packages.
+                        )}
+                      </AnimatePresence>
+
+                      {/* CURRENT PACKAGES LIST */}
+                      <div className="space-y-3 font-mono">
+                        <span className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-widest block">
+                          Product Items List ({packagesList.length})
+                        </span>
+
+                        <div className="grid grid-cols-1 gap-3 max-h-[500px] overflow-y-auto pr-1 no-scrollbar text-xs">
+                          {packagesList.length === 0 ? (
+                            <div className="text-center py-14 bg-zinc-950/20 border border-zinc-900/60 rounded-3xl text-zinc-500">
+                              There are no products available for this game. Click "Add Product Option" above to begin!
+                            </div>
+                          ) : (
+                            packagesList.map((pkg: any, idx: number) => {
+                              const isEditingPkg = editingPkgIdx === idx;
+                              return (
+                                <div key={idx} className="bg-[#0c1322] border border-zinc-900 p-4 rounded-3xl flex items-center justify-between gap-4 shadow-lg transition-all duration-300 hover:border-zinc-800">
+                                  {isEditingPkg ? (
+                                    <div className="flex-1 flex gap-3 items-end flex-wrap">
+                                      <div className="flex-1 min-w-[150px]">
+                                        <label className="text-[8px] text-zinc-600 uppercase block mb-1">Product Name</label>
+                                        <input
+                                          type="text"
+                                          value={editPackageName}
+                                          onChange={(e) => setEditPackageName(e.target.value)}
+                                          className="w-full bg-black border border-zinc-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-red-500"
+                                        />
+                                      </div>
+                                      <div className="w-28">
+                                        <label className="text-[8px] text-zinc-600 uppercase block mb-1">Price (NPR)</label>
+                                        <input
+                                          type="number"
+                                          value={editPackagePrice}
+                                          onChange={(e) => setEditPackagePrice(e.target.value)}
+                                          className="w-full bg-black border border-zinc-800 rounded-xl p-2.5 text-xs text-red-500 font-bold focus:outline-none focus:border-red-500"
+                                        />
+                                      </div>
+                                      <div className="flex gap-2 font-bold font-mono">
+                                        <button
+                                          onClick={() => setEditingPkgIdx(null)}
+                                          className="px-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-[10px] text-zinc-400 uppercase tracking-wider hover:text-white transition-colors cursor-pointer"
+                                        >
+                                          Cancel
+                                        </button>
+                                        <button
+                                          onClick={() => handleUpdatePackage(idx)}
+                                          className="px-4 py-2.5 bg-red-600 rounded-xl text-white text-[10px] uppercase tracking-wider hover:bg-red-700 transition-colors cursor-pointer"
+                                        >
+                                          Save
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <div className="space-y-0.5">
+                                        <span className="text-[9px] text-red-500 uppercase tracking-widest font-extrabold">Item package</span>
+                                        <h5 className="font-sans font-extrabold text-white text-sm">{pkg.n}</h5>
+                                      </div>
+                                      <div className="flex items-center gap-4">
+                                        <strong className="text-emerald-500 text-sm">NPR {pkg.p}</strong>
+                                        <div className="flex items-center gap-1.5">
+                                          <button
+                                            onClick={() => {
+                                              setEditingPkgIdx(idx);
+                                              setEditPackageName(pkg.n);
+                                              setEditPackagePrice(pkg.p.toString());
+                                            }}
+                                            className="p-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white rounded-xl transition-all cursor-pointer"
+                                            title="Edit Product"
+                                          >
+                                            <Edit3 className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            onClick={() => handleDeletePackage(idx)}
+                                            className="p-2 bg-red-950/20 hover:bg-red-900/30 border border-red-900/30 text-red-500 rounded-xl transition-all cursor-pointer"
+                                            title="Delete Product"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             )}
           </div>
