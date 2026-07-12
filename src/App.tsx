@@ -643,9 +643,7 @@ export default function App() {
 
       // Validate dynamic fields based on configurations
       if (!isVoucher) {
-        const fieldsToValidate = (activeService.category === "topup" && (!activeService.fields || activeService.fields.length === 0))
-          ? [{ label: "Player UID", placeholder: "e.g. 5839218392", type: "text", key: "playerUid" }]
-          : activeService.fields;
+        const fieldsToValidate = activeService.fields || [];
 
         for (const f of fieldsToValidate) {
           if (!fieldsState[f.key]) {
@@ -1469,10 +1467,7 @@ export default function App() {
                             <p className="text-[11px] text-zinc-400">No ID/UID required. The voucher code will be loaded instantly to your account!</p>
                           </div>
                         ) : (
-                          (activeService.category === "topup" && (!activeService.fields || activeService.fields.length === 0)
-                            ? [{ label: "Player UID", placeholder: "e.g. 5839218392", type: "text", key: "playerUid" }]
-                            : activeService.fields
-                          ).map((f, fIdx) => (
+                          (activeService.fields || []).map((f, fIdx) => (
                             <div key={fIdx}>
                               <label className="text-zinc-400 block mb-1.5">{f.label}</label>
                               {f.type === "select" ? (
