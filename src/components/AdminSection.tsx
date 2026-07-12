@@ -64,6 +64,15 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
   const [paymentSettings, setPaymentSettings] = useState<any>({ qrCode: "", esewaNum: "" });
   const [currentBanners, setCurrentBanners] = useState<string[]>([]);
 
+  // Helper to determine if a game/service is a Voucher-category game
+  const isVoucherGame = (g: any) => {
+    if (!g) return false;
+    const catId = (g.category || "").toLowerCase();
+    const catObj = dbCategories.find(c => c.id === g.category);
+    const catName = catObj ? (catObj.name || "").toLowerCase() : "";
+    return catId === "voucher" || catId.includes("voucher") || catName.includes("voucher");
+  };
+
   // Category CRUD state
   const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -2773,10 +2782,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                 {/* VOUCHER GAMES GRID */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {dbGames
-                    .filter(g => {
-                      const catLower = (g.category || "").toLowerCase();
-                      return catLower === "voucher" || catLower.includes("voucher");
-                    })
+                    .filter(isVoucherGame)
                     .map(game => {
                       const rawCodes = game.voucher_codes || {};
                       const codesList = typeof rawCodes === "object"
@@ -2818,10 +2824,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                         </div>
                       );
                     })}
-                  {dbGames.filter(g => {
-                    const catLower = (g.category || "").toLowerCase();
-                    return catLower === "voucher" || catLower.includes("voucher");
-                  }).length === 0 && (
+                  {dbGames.filter(isVoucherGame).length === 0 && (
                     <div className="col-span-full py-16 text-center text-zinc-600 font-mono text-xs bg-black/20 border border-zinc-900 border-dashed rounded-2xl">
                       No voucher-category games/services configured yet. Add one in the "Games" tab with category "Voucher Code".
                     </div>

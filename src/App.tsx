@@ -811,7 +811,11 @@ export default function App() {
     }
   };
 
-  const isVoucher = activeService?.category?.toLowerCase() === "voucher" || activeService?.category?.toLowerCase().includes("voucher");
+  const activeServiceCategoryObj = dbCategories.find(c => c.id === activeService?.category);
+  const activeServiceCategoryName = activeServiceCategoryObj ? (activeServiceCategoryObj.name || "").toLowerCase() : "";
+  const isVoucher = activeService?.category?.toLowerCase() === "voucher" || 
+                    activeService?.category?.toLowerCase().includes("voucher") ||
+                    activeServiceCategoryName.includes("voucher");
 
   const rawVouchersObj = activeService?.voucher_codes || {};
   const vouchersList = typeof rawVouchersObj === "object"
