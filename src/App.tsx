@@ -242,6 +242,13 @@ export default function App() {
     active: false,
     message: "",
   });
+  const [customNotification, setCustomNotification] = useState<{
+    active: boolean;
+    message: string;
+    type: "success" | "error" | "info" | "confirm";
+    onConfirm?: () => void;
+    onCancel?: () => void;
+  } | null>(null);
   const [voucherSuccessModal, setVoucherSuccessModal] = useState<{
     active: boolean;
     codes: string[];
@@ -282,6 +289,63 @@ export default function App() {
     if (typeof window !== "undefined" && (window.location.pathname === "/admin" || window.location.pathname.endsWith("/admin") || window.location.href.includes("/admin"))) {
       setActiveSection("admin");
     }
+  }, []);
+
+  // Set up custom glowing alert and confirm dialogue overrides
+  useEffect(() => {
+    window.alert = (msg: string) => {
+      let type: "success" | "error" | "info" = "info";
+      const m = (msg || "").toLowerCase();
+      if (
+        m.includes("success") || 
+        m.includes("done") || 
+        m.includes("added") || 
+        m.includes("copied") || 
+        m.includes("dispatched") || 
+        m.includes("delivered") || 
+        m.includes("cleared") ||
+        m.includes("completed") ||
+        m.includes("updated") ||
+        m.includes("saved")
+      ) {
+        type = "success";
+      } else if (
+        m.includes("error") || 
+        m.includes("fail") || 
+        m.includes("invalid") || 
+        m.includes("mismatch") || 
+        m.includes("blocked") || 
+        m.includes("not enough") || 
+        m.includes("required") ||
+        m.includes("please") ||
+        m.includes("mismatch")
+      ) {
+        type = "error";
+      }
+      setCustomNotification({
+        active: true,
+        message: msg,
+        type: type
+      });
+    };
+
+    (window as any).customConfirm = (msg: string): Promise<boolean> => {
+      return new Promise((resolve) => {
+        setCustomNotification({
+          active: true,
+          message: msg,
+          type: "confirm",
+          onConfirm: () => {
+            setCustomNotification(null);
+            resolve(true);
+          },
+          onCancel: () => {
+            setCustomNotification(null);
+            resolve(false);
+          }
+        });
+      });
+    };
   }, []);
 
   // Auto-rotating Banner carousel
@@ -528,7 +592,10 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    if (confirm("Are you sure you want to log out?")) {
+    const confirmed = (window as any).customConfirm 
+      ? await (window as any).customConfirm("Are you sure you want to log out?") 
+      : window.confirm("Are you sure you want to log out?");
+    if (confirmed) {
       await signOut(auth);
       setActiveSection("home");
     }
@@ -1629,7 +1696,7 @@ export default function App() {
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <AdminSection db={db} currentUser={currentUser} services={dbServices.length > 0 ? dbServices : servicesData} setActiveSection={setActiveSection} />
+                  <AdminSection db={db} currentUser={currentUser} services={dbServices.length > 0 ? dbServices : servicesData} setActiveSection={setActiveSection} customConfirm={(window as any).customConfirm} />
                 </motion.div>
               )}
 
@@ -1933,6 +2000,114 @@ export default function App() {
                   Order Detail
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Glowing Alert & Confirm Dialogue Modal */}
+      <AnimatePresence>
+        {customNotification && customNotification.active && (
+          <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-[10000]">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 15 }}
+              transition={{ duration: 0.2 }}
+              className={`w-full max-w-sm bg-[#050505] border rounded-3xl p-6 text-center space-y-5 relative ${
+                customNotification.type === "error"
+                  ? "border-red-500/80 shadow-[0_0_40px_rgba(239,68,68,0.4)]"
+                  : customNotification.type === "success"
+                  ? "border-emerald-500/80 shadow-[0_0_40px_rgba(16,185,129,0.4)]"
+                  : customNotification.type === "confirm"
+                  ? "border-red-500/80 shadow-[0_0_40px_rgba(239,68,68,0.4)]"
+                  : "border-amber-500/80 shadow-[0_0_40px_rgba(245,158,11,0.4)]"
+              }`}
+            >
+              {/* Pulse Indicator */}
+              <div className="absolute top-4 right-4 flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-zinc-900 bg-zinc-950/50">
+                <span className={`w-1.5 h-1.5 rounded-full animate-ping ${
+                  customNotification.type === "error" || customNotification.type === "confirm"
+                    ? "bg-red-500"
+                    : customNotification.type === "success"
+                    ? "bg-emerald-500"
+                    : "bg-amber-500"
+                }`}></span>
+                <span className="text-[8px] font-mono font-bold uppercase tracking-widest text-zinc-500">SYSTEM</span>
+              </div>
+
+              {/* Icon */}
+              <div className="flex justify-center pt-2">
+                {customNotification.type === "success" ? (
+                  <CheckCircle2 className="w-14 h-14 text-emerald-500 filter drop-shadow-[0_0_10px_rgba(16,185,129,0.7)] animate-pulse" />
+                ) : customNotification.type === "error" || customNotification.type === "confirm" ? (
+                  <AlertTriangle className="w-14 h-14 text-red-500 filter drop-shadow-[0_0_10px_rgba(239,68,68,0.7)] animate-bounce" />
+                ) : (
+                  <Info className="w-14 h-14 text-amber-500 filter drop-shadow-[0_0_10px_rgba(245,158,11,0.7)] animate-pulse" />
+                )}
+              </div>
+
+              {/* Title Header */}
+              <div className="space-y-1">
+                <h3 className={`font-orbitron font-black text-xs uppercase tracking-widest ${
+                  customNotification.type === "error" || customNotification.type === "confirm"
+                    ? "text-red-500"
+                    : customNotification.type === "success"
+                    ? "text-emerald-500"
+                    : "text-amber-500"
+                }`}>
+                  {customNotification.type === "confirm"
+                    ? "CONFIRM ACTION"
+                    : customNotification.type === "error"
+                    ? "SYSTEM ALERT"
+                    : customNotification.type === "success"
+                    ? "SUCCESS STATUS"
+                    : "INFORMATION"}
+                </h3>
+                <div className="w-8 h-0.5 mx-auto bg-zinc-900 rounded-full" />
+              </div>
+
+              {/* Message */}
+              <p className="text-zinc-300 text-xs font-mono font-medium leading-relaxed bg-black/40 border border-zinc-900/60 p-4 rounded-2xl select-text">
+                {customNotification.message}
+              </p>
+
+              {/* Controls */}
+              {customNotification.type === "confirm" ? (
+                <div className="flex gap-2.5 font-mono text-[11px] uppercase">
+                  <button
+                    onClick={() => {
+                      if (customNotification.onCancel) customNotification.onCancel();
+                      setCustomNotification(null);
+                    }}
+                    className="flex-1 bg-zinc-950 border border-zinc-900 hover:border-zinc-800 text-zinc-400 hover:text-white font-extrabold py-3 rounded-xl tracking-wider cursor-pointer transition-colors"
+                  >
+                    NO / CANCEL
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (customNotification.onConfirm) customNotification.onConfirm();
+                      setCustomNotification(null);
+                    }}
+                    className="flex-1 bg-red-950/20 hover:bg-red-900/30 text-red-500 font-extrabold py-3 rounded-xl tracking-wider cursor-pointer border border-red-900/40 transition-all shadow-[0_0_20px_rgba(239,68,68,0.2)] animate-pulse"
+                  >
+                    YES / CONFIRM
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setCustomNotification(null)}
+                  className={`w-full font-mono text-[11px] font-extrabold py-3 rounded-xl tracking-wider cursor-pointer transition-all ${
+                    customNotification.type === "success"
+                      ? "bg-emerald-950/20 hover:bg-emerald-900/30 text-emerald-500 border border-emerald-900/40 shadow-[0_0_15px_rgba(16,185,129,0.15)]"
+                      : customNotification.type === "error"
+                      ? "bg-red-950/20 hover:bg-red-900/30 text-red-500 border border-red-900/40 shadow-[0_0_15px_rgba(239,68,68,0.15)]"
+                      : "bg-amber-950/20 hover:bg-amber-900/30 text-amber-500 border border-amber-900/40 shadow-[0_0_15px_rgba(245,158,11,0.15)]"
+                  }`}
+                >
+                  DISMISS
+                </button>
+              )}
             </motion.div>
           </div>
         )}

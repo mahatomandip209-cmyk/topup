@@ -47,9 +47,17 @@ interface AdminSectionProps {
   currentUser: any;
   services: ServiceItem[];
   setActiveSection?: (section: string) => void;
+  customConfirm?: (msg: string) => Promise<boolean>;
 }
 
-export default function AdminSection({ db, currentUser, services, setActiveSection }: AdminSectionProps) {
+export default function AdminSection({ db, currentUser, services, setActiveSection, customConfirm }: AdminSectionProps) {
+  const confirmAction = async (msg: string): Promise<boolean> => {
+    if (customConfirm) {
+      return await customConfirm(msg);
+    }
+    return window.confirm(msg);
+  };
+
   // Sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [adminTab, setAdminTab] = useState<"dashboard" | "orders" | "deposits" | "users" | "categories" | "games" | "vouchers" | "products" | "qrcode" | "requirements" | "banners">("dashboard");
@@ -385,7 +393,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
   // Block/Unblock user account
   const toggleBlockUser = async (user: any) => {
     const nextState = !user.blocked;
-    if (confirm(`Are you sure you want to ${nextState ? "BLOCK" : "UNBLOCK"} user: ${user.name}?`)) {
+    if (await confirmAction(`Are you sure you want to ${nextState ? "BLOCK" : "UNBLOCK"} user: ${user.name}?`)) {
       try {
         await update(ref(db, `users/${user.uid}`), {
           blocked: nextState
@@ -399,7 +407,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
 
   // Approve Deposit Request
   const approveDeposit = async (deposit: any) => {
-    if (confirm(`Approve deposit of NPR ${deposit.amount} for user ID ${deposit.uid}? This will automatically add credits!`)) {
+    if (await confirmAction(`Approve deposit of NPR ${deposit.amount} for user ID ${deposit.uid}? This will automatically add credits!`)) {
       setLoading(true);
       try {
         await update(ref(db, `deposits/${deposit.depositId}`), {
@@ -437,7 +445,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
 
   // Reject Deposit Request
   const rejectDeposit = async (deposit: any) => {
-    if (confirm(`REJECT this deposit request of NPR ${deposit.amount}?`)) {
+    if (await confirmAction(`REJECT this deposit request of NPR ${deposit.amount}?`)) {
       setLoading(true);
       try {
         await update(ref(db, `deposits/${deposit.depositId}`), {
@@ -464,7 +472,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
 
   // Approve Order Dispatch
   const approveOrder = async (order: any) => {
-    if (confirm(`Approve game order ${order.packageName} for UID ${order.playerUid}?`)) {
+    if (await confirmAction(`Approve game order ${order.packageName} for UID ${order.playerUid}?`)) {
       setLoading(true);
       try {
         await update(ref(db, `all_orders/${order.orderId}`), {
@@ -495,7 +503,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
 
   // Reject Order & Refund User Balance
   const rejectOrder = async (order: any) => {
-    if (confirm(`REJECT this order? This will automatically REFUND NPR ${order.price} back to the user balance.`)) {
+    if (await confirmAction(`REJECT this order? This will automatically REFUND NPR ${order.price} back to the user balance.`)) {
       setLoading(true);
       try {
         let userBal = 0;
@@ -592,7 +600,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
   };
 
   const handleDeleteGame = async (gameId: string) => {
-    if (confirm("Are you sure you want to delete this game? This will also delete all packages under it!")) {
+    if (await confirmAction("Are you sure you want to delete this game? This will also delete all packages under it!")) {
       try {
         await remove(ref(db, `games/${gameId}`));
         alert("Game deleted.");
@@ -639,7 +647,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
   };
 
   const handleDeleteCategory = async (catId: string) => {
-    if (confirm(`Are you sure you want to delete category "${catId}"?`)) {
+    if (await confirmAction(`Are you sure you want to delete category "${catId}"?`)) {
       try {
         await remove(ref(db, `categories/${catId}`));
         alert("Category deleted successfully!");
@@ -713,7 +721,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
 
   const handleDeletePackage = async (idx: number) => {
     if (!selectedProductGameId) return;
-    if (confirm("Delete this product package?")) {
+    if (await confirmAction("Delete this product package?")) {
       const gameObj = dbGames.find(g => g.id === selectedProductGameId);
       if (!gameObj) return;
 
@@ -742,7 +750,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
   };
 
   const handleDeleteQr = async () => {
-    if (confirm("Are you sure you want to delete/clear the QR code image?")) {
+    if (await confirmAction("Are you sure you want to delete/clear the QR code image?")) {
       try {
         await update(ref(db, "payment_settings"), { qrCode: "" });
         setQrInputUrl("");
@@ -754,7 +762,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
   };
 
   const handleDeleteEsewaNum = async () => {
-    if (confirm("Are you sure you want to delete/clear the eSewa Number?")) {
+    if (await confirmAction("Are you sure you want to delete/clear the eSewa Number?")) {
       try {
         await update(ref(db, "payment_settings"), { esewaNum: "" });
         setEsewaInputNumber("");
@@ -866,7 +874,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
     const gameObj = dbGames.find(g => g.id === selectedReqGameId);
     if (!gameObj) return;
 
-    if (confirm("Are you sure you want to delete this requirement?")) {
+    if (await confirmAction("Are you sure you want to delete this requirement?")) {
       const updatedFields = (gameObj.fields || []).filter((_: any, idx: number) => idx !== idxToDelete);
       try {
         await update(ref(db, `games/${selectedReqGameId}`), { fields: updatedFields });
@@ -915,7 +923,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
   };
 
   const handleDeleteRequirement = async (id: string) => {
-    if (confirm("Delete this requirement? It will be removed from global pool.")) {
+    if (await confirmAction("Delete this requirement? It will be removed from global pool.")) {
       try {
         await remove(ref(db, `global_requirements/${id}`));
         alert("Deleted.");
@@ -939,7 +947,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
   };
 
   const deleteBanner = async (idx: number) => {
-    if (confirm("Delete this banner?")) {
+    if (await confirmAction("Delete this banner?")) {
       const updated = currentBanners.filter((_, i) => i !== idx);
       try {
         await set(ref(db, "banners"), updated);
@@ -2880,13 +2888,11 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                 };
 
                 const handleDeleteCode = async (codeId: string) => {
-                  if (confirm("Are you sure you want to delete this voucher code?")) {
+                  if (await confirmAction("Are you sure you want to delete this voucher code?")) {
                     try {
                       const updatedVoucherCodes = { ...rawCodes };
                       delete updatedVoucherCodes[codeId];
-                      await update(ref(db, `games/${selectedVoucherGameId}`), {
-                        voucher_codes: updatedVoucherCodes
-                      });
+                      await set(ref(db, `games/${selectedVoucherGameId}/voucher_codes`), updatedVoucherCodes);
                       alert("Voucher code deleted.");
                     } catch (err: any) {
                       alert("Error deleting: " + err.message);

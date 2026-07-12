@@ -180,45 +180,94 @@ export default function HistorySection({
                       className="border-t border-zinc-900/80 bg-black/40 p-4 space-y-4 text-xs"
                     >
                       {/* Key Details Grid */}
-                      <div className="grid grid-cols-2 gap-3 bg-[#0c0c0c] p-3 rounded-xl border border-zinc-900 font-mono">
-                        <div>
-                          <span className="text-[10px] text-zinc-500 block uppercase font-bold">Game Title</span>
-                          <span className="text-white font-bold">{order.game}</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-zinc-500 block uppercase font-bold">Credits Package</span>
-                          <span className="text-white font-bold">{order.packageName}</span>
-                        </div>
-                        {order.playerUid ? (
-                          <div>
-                            <span className="text-[10px] text-zinc-500 block uppercase font-bold">Player Game UID</span>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="text-red-500 font-extrabold tracking-wide text-xs">{order.playerUid}</span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  copyToClipboard(order.playerUid, "id");
-                                }}
-                                className="text-zinc-600 hover:text-white cursor-pointer transition-colors"
-                                title="Copy UID"
-                              >
-                                <Copy className="w-3.5 h-3.5" />
-                              </button>
+                      {(() => {
+                        const standardKeys = [
+                          "orderId",
+                          "userOrderId",
+                          "userId",
+                          "userName",
+                          "userEmail",
+                          "game",
+                          "gameId",
+                          "packageName",
+                          "price",
+                          "quantity",
+                          "status",
+                          "timestamp",
+                          "voucher_codes",
+                          "id"
+                        ];
+                        const customFields = Object.entries(order).filter(
+                          ([key]) => !standardKeys.includes(key)
+                        );
+
+                        return (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-3 bg-[#0c0c0c] p-3 rounded-xl border border-zinc-900 font-mono">
+                              <div>
+                                <span className="text-[10px] text-zinc-500 block uppercase font-bold">Game/Service Name</span>
+                                <span className="text-white font-bold">{order.game}</span>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-zinc-500 block uppercase font-bold">Product Package</span>
+                                <span className="text-white font-bold">{order.packageName}</span>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-zinc-500 block uppercase font-bold">Amount Paid</span>
+                                <span className="text-red-500 font-extrabold">RS {order.price}</span>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-zinc-500 block uppercase font-bold">Quantity Ordered</span>
+                                <span className="text-emerald-500 font-extrabold">{order.quantity || 1} Pcs</span>
+                              </div>
+                              <div className="col-span-2">
+                                <span className="text-[10px] text-zinc-500 block uppercase font-bold">Purchase Date</span>
+                                <span className="text-zinc-300 text-[11px]">
+                                  {new Date(order.timestamp).toLocaleString()}
+                                </span>
+                              </div>
                             </div>
+
+                            {/* Dynamically Render Order Requirements only if they exist */}
+                            {customFields.length > 0 && (
+                              <div className="bg-[#0c0c0c]/90 border border-zinc-900 p-4 rounded-xl space-y-2.5">
+                                <span className="text-[10px] text-zinc-400 font-orbitron font-extrabold uppercase tracking-widest block">📝 Filed Requirements</span>
+                                <div className="grid grid-cols-1 gap-2.5">
+                                  {customFields.map(([key, val]: [string, any]) => {
+                                    const formattedKey = key
+                                      .replace(/([A-Z])/g, ' $1')
+                                      .replace(/[_-]/g, ' ')
+                                      .trim()
+                                      .replace(/^\w/, (c) => c.toUpperCase());
+                                    
+                                    const displayVal = typeof val === "object" ? JSON.stringify(val) : String(val);
+
+                                    return (
+                                      <div key={key} className="bg-black/40 border border-zinc-900/80 p-2.5 px-3.5 rounded-xl font-mono text-xs flex justify-between items-center gap-4">
+                                        <div className="space-y-0.5 min-w-0 flex-1">
+                                          <span className="text-[9px] text-zinc-500 block uppercase font-bold">{formattedKey}</span>
+                                          <span className="text-white font-extrabold tracking-wide break-all">{displayVal}</span>
+                                        </div>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigator.clipboard.writeText(displayVal);
+                                            alert(`${formattedKey} copied: ${displayVal}`);
+                                          }}
+                                          className="text-zinc-500 hover:text-white transition-colors cursor-pointer p-1.5 hover:bg-zinc-900 rounded-lg shrink-0"
+                                          title={`Copy ${formattedKey}`}
+                                        >
+                                          <Copy className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        ) : (
-                          <div>
-                            <span className="text-[10px] text-zinc-500 block uppercase font-bold">Quantity Ordered</span>
-                            <span className="text-emerald-500 font-extrabold">{order.quantity || 1} Pcs</span>
-                          </div>
-                        )}
-                        <div>
-                          <span className="text-[10px] text-zinc-500 block uppercase font-bold">Purchase Date</span>
-                          <span className="text-zinc-300 text-[11px]">
-                            {new Date(order.timestamp).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
+                        );
+                      })()}
 
                       {/* Render Voucher Codes if available */}
                       {order.voucher_codes && order.voucher_codes.length > 0 && (
