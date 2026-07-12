@@ -110,7 +110,7 @@ export default function HistorySection({
       </div>
 
       {/* Main lists */}
-      <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1 no-scrollbar">
+      <div className="space-y-4">
         {historySubTab === "orders" ? (
           userOrders.length === 0 ? (
             <div className="text-center py-20 bg-[#121212]/30 rounded-2xl border border-zinc-900/60 space-y-3">
@@ -321,16 +321,6 @@ export default function HistorySection({
                         hour12: true
                       })}
                     </div>
-                  </div>
-
-                  {/* Support Team inquiry button */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleOrderInquiry(order)}
-                      className="flex-1 bg-zinc-50 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-800 border border-zinc-200/85 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" /> Ask Support Team
-                    </button>
                   </div>
                 </div>
               );
