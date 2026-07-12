@@ -36,7 +36,9 @@ import {
   Eye,
   EyeOff,
   Tags,
-  ArrowLeft
+  ArrowLeft,
+  Ticket,
+  Copy
 } from "lucide-react";
 import { ServiceItem, GamePackage } from "../data/packages";
 
@@ -50,7 +52,7 @@ interface AdminSectionProps {
 export default function AdminSection({ db, currentUser, services, setActiveSection }: AdminSectionProps) {
   // Sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [adminTab, setAdminTab] = useState<"dashboard" | "orders" | "deposits" | "users" | "categories" | "games" | "products" | "qrcode" | "requirements" | "banners">("dashboard");
+  const [adminTab, setAdminTab] = useState<"dashboard" | "orders" | "deposits" | "users" | "categories" | "games" | "vouchers" | "products" | "qrcode" | "requirements" | "banners">("dashboard");
 
   // Dynamic state loaded from DB
   const [dbGames, setDbGames] = useState<any[]>([]);
@@ -135,6 +137,11 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
   const [reqModalName, setReqModalName] = useState("");
   const [reqModalType, setReqModalType] = useState<"text" | "number">("text");
   const [editingReqIdx, setEditingReqIdx] = useState<number | null>(null);
+
+  // Vouchers Management State
+  const [selectedVoucherGameId, setSelectedVoucherGameId] = useState<string | null>(null);
+  const [voucherTextArea, setVoucherTextArea] = useState("");
+  const [voucherFilter, setVoucherFilter] = useState<"available" | "sold">("available");
 
   // Load all DB lists
   useEffect(() => {
@@ -997,6 +1004,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                 {adminTab === "orders" && "Fulfill Orders"}
                 {adminTab === "deposits" && "Load Deposits"}
                 {adminTab === "users" && "User Balances"}
+                {adminTab === "vouchers" && "Instant Voucher stock manager"}
                 {adminTab === "products" && "Packages & Price Customizer"}
                 {adminTab === "qrcode" && "Payment settings details"}
                 {adminTab === "requirements" && "Dynamic Order Requirements manager"}
@@ -1090,6 +1098,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                     { id: "users", label: `User Balances (${allUsers.length})`, icon: Users },
                     { id: "categories", label: `Categories (${dbCategories.length})`, icon: Tags },
                     { id: "games", label: "Games", icon: Database },
+                    { id: "vouchers", label: "Voucher", icon: Ticket },
                     { id: "products", label: "Products", icon: ShoppingCart },
                     { id: "requirements", label: "Requirements", icon: Sliders },
                     { id: "qrcode", label: "QR Code & Payments", icon: QrCode },
@@ -1106,6 +1115,9 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                           setSearchQuery("");
                           if (item.id === "requirements") {
                             setSelectedReqGameId(null);
+                          }
+                          if (item.id === "vouchers") {
+                            setSelectedVoucherGameId(null);
                           }
                         }}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${
@@ -2738,6 +2750,273 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                 </div>
               )}
             </AnimatePresence>
+          </div>
+        )}
+
+        {/* VOUCHER CODES STOCK MANAGER */}
+        {adminTab === "vouchers" && (
+          <div className="space-y-6 animate-fadeIn">
+            {!selectedVoucherGameId ? (
+              // VOUCHER GAMES SELECTION VIEW
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-black/30 border border-zinc-900 p-5 rounded-2xl">
+                  <div>
+                    <h3 className="font-orbitron font-extrabold text-white text-md uppercase tracking-wider">
+                      Voucher Code Stock Manager
+                    </h3>
+                    <p className="text-xs text-zinc-500 font-sans mt-0.5">
+                      Select a voucher category game/service to manage its digital codes.
+                    </p>
+                  </div>
+                </div>
+
+                {/* VOUCHER GAMES GRID */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {dbGames
+                    .filter(g => {
+                      const catLower = (g.category || "").toLowerCase();
+                      return catLower === "voucher" || catLower.includes("voucher");
+                    })
+                    .map(game => {
+                      const rawCodes = game.voucher_codes || {};
+                      const codesList = typeof rawCodes === "object"
+                        ? Object.keys(rawCodes).map(k => ({ id: k, ...rawCodes[k] }))
+                        : [];
+                      const availableCount = codesList.filter((c: any) => c.status === "available" || !c.status).length;
+                      const soldCount = codesList.filter((c: any) => c.status === "sold" || c.status === "soldout").length;
+
+                      return (
+                        <div
+                          key={game.id}
+                          onClick={() => {
+                            setSelectedVoucherGameId(game.id);
+                            setVoucherTextArea("");
+                            setVoucherFilter("available");
+                          }}
+                          className="bg-black/35 border border-zinc-900/80 hover:border-zinc-850 p-4 rounded-2xl flex items-center justify-between gap-4 cursor-pointer hover:bg-black/50 hover:scale-[1.01] transition-all group duration-200"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={game.image || "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=280"}
+                              alt={game.name}
+                              className="w-12 h-12 rounded-xl object-cover border border-zinc-900"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div>
+                              <strong className="text-white text-sm group-hover:text-red-500 transition-colors block">{game.name}</strong>
+                              <span className="bg-zinc-900/60 border border-zinc-900 text-zinc-400 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded uppercase">
+                                Voucher Category
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] text-zinc-500 font-mono block uppercase">In Stock</span>
+                            <span className="font-orbitron font-black text-xs text-emerald-500 block">
+                              {availableCount} Available
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  {dbGames.filter(g => {
+                    const catLower = (g.category || "").toLowerCase();
+                    return catLower === "voucher" || catLower.includes("voucher");
+                  }).length === 0 && (
+                    <div className="col-span-full py-16 text-center text-zinc-600 font-mono text-xs bg-black/20 border border-zinc-900 border-dashed rounded-2xl">
+                      No voucher-category games/services configured yet. Add one in the "Games" tab with category "Voucher Code".
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              // DETAILED VOUCHER MANAGER VIEW FOR SELECTED GAME
+              (() => {
+                const gameObj = dbGames.find(g => g.id === selectedVoucherGameId);
+                if (!gameObj) return <div className="text-center font-mono py-10 text-zinc-500">Game not found</div>;
+
+                const rawCodes = gameObj.voucher_codes || {};
+                const codesList = typeof rawCodes === "object"
+                  ? Object.keys(rawCodes).map(k => ({ id: k, ...rawCodes[k] }))
+                  : [];
+                
+                const availableCodes = codesList.filter((c: any) => c.status === "available" || !c.status);
+                const soldCodes = codesList.filter((c: any) => c.status === "sold" || c.status === "soldout");
+                const currentFilteredCodes = voucherFilter === "available" ? availableCodes : soldCodes;
+
+                const handleAddVoucherCodes = async () => {
+                  const lines = voucherTextArea.split("\n");
+                  const codesToAdd = lines
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0);
+
+                  if (codesToAdd.length === 0) {
+                    alert("Please enter at least one valid voucher code.");
+                    return;
+                  }
+
+                  try {
+                    const voucherRef = ref(db, `games/${selectedVoucherGameId}/voucher_codes`);
+                    for (const code of codesToAdd) {
+                      await push(voucherRef, {
+                        code: code,
+                        status: "available",
+                        createdAt: new Date().toISOString()
+                      });
+                    }
+                    setVoucherTextArea("");
+                    alert(`Successfully added ${codesToAdd.length} voucher codes!`);
+                  } catch (err: any) {
+                    alert("Error adding voucher codes: " + err.message);
+                  }
+                };
+
+                const handleDeleteCode = async (codeId: string) => {
+                  if (confirm("Are you sure you want to delete this voucher code?")) {
+                    try {
+                      await remove(ref(db, `games/${selectedVoucherGameId}/voucher_codes/${codeId}`));
+                      alert("Voucher code deleted.");
+                    } catch (err: any) {
+                      alert("Error deleting: " + err.message);
+                    }
+                  }
+                };
+
+                return (
+                  <div className="space-y-6">
+                    {/* TOP GAME TITLE HEADER */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-black/30 border border-zinc-900 p-5 rounded-2xl">
+                      <div className="flex items-center gap-4">
+                        <button
+                          onClick={() => setSelectedVoucherGameId(null)}
+                          className="p-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white rounded-xl cursor-pointer transition-colors"
+                          title="Back to Games"
+                        >
+                          <ArrowLeft className="w-4 h-4" />
+                        </button>
+                        
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={gameObj.image}
+                            alt={gameObj.name}
+                            className="w-12 h-12 rounded-xl object-cover border border-zinc-900"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div>
+                            <span className="text-[9px] text-zinc-500 font-mono uppercase tracking-widest block">Managing Vouchers Stock for</span>
+                            <h3 className="font-orbitron font-extrabold text-white text-md uppercase tracking-wider">{gameObj.name}</h3>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* TWO-COLUMN GRID: ADD FORM LEFT, STOCK LIST RIGHT */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                      
+                      {/* LEFT: ADD CODES FORM */}
+                      <div className="lg:col-span-5 bg-black/30 border border-zinc-900 p-5 rounded-3xl space-y-4 text-xs font-mono">
+                        <div className="flex items-center gap-2 text-red-500">
+                          <Ticket className="w-4 h-4" />
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest block">
+                            Add Voucher Codes (One Per Line)
+                          </span>
+                        </div>
+
+                        <textarea
+                          rows={8}
+                          value={voucherTextArea}
+                          onChange={(e) => setVoucherTextArea(e.target.value)}
+                          placeholder="ABC-123-XYZ&#10;DEF-456-UVW&#10;GHI-789-RST"
+                          className="w-full bg-black border border-zinc-900 rounded-xl p-3 text-white text-xs font-mono focus:outline-none focus:border-red-500 leading-relaxed resize-none placeholder-zinc-700"
+                        />
+
+                        <button
+                          onClick={handleAddVoucherCodes}
+                          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl uppercase cursor-pointer transition-colors text-xs font-orbitron"
+                        >
+                          Add Codes
+                        </button>
+                      </div>
+
+                      {/* RIGHT: STOCK STATUS LIST */}
+                      <div className="lg:col-span-7 space-y-4">
+                        {/* SUB-TABS (AVAILABLE AND SOLD ONLY) */}
+                        <div className="flex bg-black/40 border border-zinc-900 p-1 rounded-xl">
+                          <button
+                            onClick={() => setVoucherFilter("available")}
+                            className={`flex-1 py-2 text-center text-xs font-mono font-bold uppercase rounded-lg transition-all cursor-pointer ${
+                              voucherFilter === "available"
+                                ? "bg-red-600 text-white"
+                                : "text-zinc-500 hover:text-white"
+                            }`}
+                          >
+                            Available ({availableCodes.length})
+                          </button>
+                          <button
+                            onClick={() => setVoucherFilter("sold")}
+                            className={`flex-1 py-2 text-center text-xs font-mono font-bold uppercase rounded-lg transition-all cursor-pointer ${
+                              voucherFilter === "sold"
+                                ? "bg-red-600 text-white"
+                                : "text-zinc-500 hover:text-white"
+                            }`}
+                          >
+                            Sold / Used ({soldCodes.length})
+                          </button>
+                        </div>
+
+                        {/* FILTERED CODES SCROLL AREA */}
+                        <div className="bg-black/25 border border-zinc-900 rounded-3xl p-4 min-h-[300px] max-h-[420px] overflow-y-auto no-scrollbar">
+                          {currentFilteredCodes.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-[260px] text-zinc-600 font-mono text-xs space-y-1">
+                              <span>No codes in this status.</span>
+                              {voucherFilter === "available" && (
+                                <span className="text-[10px] text-zinc-500 font-sans">Use the left panel to upload new stock.</span>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-2.5">
+                              {currentFilteredCodes.map((c: any) => (
+                                <div
+                                  key={c.id}
+                                  className="flex items-center justify-between gap-4 bg-black/40 border border-zinc-900 p-3 rounded-2xl"
+                                >
+                                  <div className="flex items-center gap-2.5 overflow-hidden">
+                                    <div className={`w-2 h-2 rounded-full ${voucherFilter === "available" ? "bg-emerald-500" : "bg-zinc-700"}`} />
+                                    <span className="font-mono text-xs text-white tracking-wider break-all font-bold select-all">
+                                      {c.code}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(c.code);
+                                        alert("Code copied to clipboard: " + c.code);
+                                      }}
+                                      className="p-2 bg-zinc-900 hover:bg-zinc-850 text-zinc-400 hover:text-white border border-zinc-800 rounded-lg cursor-pointer transition-colors"
+                                      title="Copy Code"
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteCode(c.id)}
+                                      className="p-2 bg-red-950/20 hover:bg-red-900/20 border border-red-950 text-red-500 rounded-lg cursor-pointer transition-colors"
+                                      title="Delete Code"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                );
+              })()
+            )}
           </div>
         )}
 

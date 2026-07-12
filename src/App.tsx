@@ -52,7 +52,8 @@ import {
   Globe,
   DollarSign,
   Phone,
-  Gift
+  Gift,
+  Ticket
 } from "lucide-react";
 import { auth, db } from "./firebase";
 import { UserData } from "./types";
@@ -812,6 +813,12 @@ export default function App() {
 
   const isVoucher = activeService?.category?.toLowerCase() === "voucher" || activeService?.category?.toLowerCase().includes("voucher");
 
+  const rawVouchersObj = activeService?.voucher_codes || {};
+  const vouchersList = typeof rawVouchersObj === "object"
+    ? Object.keys(rawVouchersObj).map((key: any) => ({ id: key, ...rawVouchersObj[key] }))
+    : [];
+  const availableVouchersCount = vouchersList.filter((v: any) => v.status === "available" || !v.status).length;
+
   return (
     <div className="min-h-screen bg-bg-navy text-white font-sans flex flex-col antialiased selection:bg-brand-orange selection:text-white">
       {/* AUTH INITIALIZING BANNER */}
@@ -1462,9 +1469,22 @@ export default function App() {
                       {/* Display Dynamic Fields */}
                       <div className="space-y-4 text-xs font-mono">
                         {isVoucher ? (
-                          <div className="p-4 bg-zinc-950/45 border border-zinc-900/80 rounded-2xl text-center space-y-1">
-                            <span className="text-emerald-500 font-orbitron font-extrabold tracking-wider uppercase text-[10px] block">⚡ Instant Delivery Voucher</span>
-                            <p className="text-[11px] text-zinc-400">No ID/UID required. The voucher code will be loaded instantly to your account!</p>
+                          <div className="space-y-3">
+                            <div className="p-4 bg-zinc-950/45 border border-zinc-900/80 rounded-2xl text-center space-y-1">
+                              <span className="text-emerald-500 font-orbitron font-extrabold tracking-wider uppercase text-[10px] block">⚡ Instant Delivery Voucher</span>
+                              <p className="text-[11px] text-zinc-400">No ID/UID required. The voucher code will be loaded instantly to your account!</p>
+                            </div>
+
+                            <div className="p-4 bg-black/30 border border-zinc-900/70 rounded-2xl flex items-center justify-between">
+                              <span className="text-[10px] uppercase font-bold text-zinc-400">Voucher Stock Status</span>
+                              <span className={`font-orbitron font-black text-[11px] px-2.5 py-1 rounded-lg tracking-wider uppercase ${
+                                availableVouchersCount > 0
+                                  ? "bg-emerald-950/40 text-emerald-400 border border-emerald-900/30"
+                                  : "bg-red-950/45 text-red-500 border border-red-950"
+                              }`}>
+                                {availableVouchersCount > 0 ? `${availableVouchersCount} Available` : "Sold Out"}
+                              </span>
+                            </div>
                           </div>
                         ) : (
                           (activeService.fields || []).map((f, fIdx) => (
