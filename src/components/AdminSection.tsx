@@ -527,9 +527,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
     }
     const cleanId = newGameId.trim().toLowerCase().replace(/\s+/g, "_");
 
-    const finalFields = [
-      { label: "Player UID", placeholder: "e.g. 5839218392", type: "text", key: "playerUid" }
-    ];
+    const finalFields: any[] = [];
 
     const newGameObj = {
       id: cleanId,
@@ -560,9 +558,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
     if (!editingGameId) return;
 
     const existingGame = dbGames.find(g => g.id === editingGameId);
-    const finalFields = existingGame?.fields || [
-      { label: "Player UID", placeholder: "e.g. 5839218392", type: "text", key: "playerUid" }
-    ];
+    const finalFields = existingGame?.fields || [];
 
     try {
       await update(ref(db, `games/${editingGameId}`), {
