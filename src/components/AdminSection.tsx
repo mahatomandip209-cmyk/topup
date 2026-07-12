@@ -1553,21 +1553,6 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                           <span className="text-[10px] text-zinc-500 font-mono font-bold uppercase">Number:</span>
                           <span>{u.phone || "N/A"}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-zinc-400 font-mono">
-                          <span className="text-[10px] text-zinc-500 font-mono font-bold uppercase">Password:</span>
-                          <span className="font-semibold text-zinc-300 bg-black/40 px-2 py-0.5 rounded border border-zinc-900 font-sans">
-                            {isPasswordVisible ? (u.password || "BNYPass@123") : "••••••••"}
-                          </span>
-                          <button
-                            onClick={() => {
-                              setShowPasswords(prev => ({ ...prev, [u.uid]: !isPasswordVisible }));
-                            }}
-                            className="p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-white transition-colors cursor-pointer"
-                            title={isPasswordVisible ? "Hide Password" : "Show Password"}
-                          >
-                            {isPasswordVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
                         <div className="flex items-center gap-1.5 pt-1">
                           <span className="text-[10px] text-zinc-500 font-mono font-bold uppercase">Balance:</span>
                           <span className="text-xs text-emerald-500 font-mono font-black filter drop-shadow-[0_0_10px_rgba(16,185,129,0.15)]">NPR {u.balance ?? 0}</span>

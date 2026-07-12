@@ -1245,14 +1245,14 @@ export default function App() {
                   className="space-y-6"
                 >
                   {/* Category Tabs Selector with Red Glowing Design */}
-                  <div className="flex justify-center gap-2.5 pb-2 border-b border-zinc-900/40 flex-wrap">
+                  <div className="flex overflow-x-auto whitespace-nowrap no-scrollbar gap-2.5 pb-2.5 border-b border-zinc-900/40 md:justify-center justify-start px-1 max-w-full scroll-smooth">
                     {dbCategories.map((cat) => {
                       const isActive = selectedCategory === cat.id;
                       return (
                         <button
                           key={cat.id}
                           onClick={() => setSelectedCategory(cat.id)}
-                          className={`px-4 py-2.5 rounded-xl font-orbitron font-extrabold text-[11px] uppercase tracking-wider transition-all duration-300 border cursor-pointer text-center ${
+                          className={`px-4 py-2.5 rounded-xl font-orbitron font-extrabold text-[11px] uppercase tracking-wider transition-all duration-300 border cursor-pointer text-center shrink-0 ${
                             isActive
                               ? "bg-red-950/45 border-red-600 text-red-500 shadow-[0_0_15px_rgba(220,38,38,0.65)] scale-105"
                               : "bg-black/40 border-zinc-900 text-zinc-500 hover:text-zinc-300 hover:border-zinc-800"

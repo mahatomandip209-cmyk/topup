@@ -22,6 +22,14 @@
   border-radius: 3px;
 }
 
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 body {
   background-color: #040810;
   color: #ffffff;
