@@ -9,7 +9,8 @@ import {
   XCircle,
   Copy,
   MessageSquare,
-  ChevronLeft
+  ChevronLeft,
+  Key
 } from "lucide-react";
 
 export interface HistorySectionProps {
@@ -124,62 +125,122 @@ export default function HistorySection({
             </div>
           ) : (
             userOrders.map((order) => {
-              const trackingId = `ORD-${order.id.slice(0, 8).toUpperCase()}`;
+              const trackingId = `GAM-${order.id.slice(0, 6).toUpperCase()}`;
+              const isVoucher = order.category === "voucher_code" || (order.voucher_codes && order.voucher_codes.length > 0);
 
               return (
                 <div
                   key={order.id}
-                  className="bg-[#121212]/60 border border-zinc-900/80 hover:border-red-600/30 rounded-2xl overflow-hidden transition-all duration-300 shadow-[0_0_15px_rgba(255,0,0,0.02)]"
+                  className="bg-white border border-zinc-200/80 rounded-3xl p-5 space-y-4 shadow-sm hover:shadow-md transition-all duration-300 text-zinc-950"
                 >
-                  {/* Summary Item Header */}
-                  <div className="p-4 flex justify-between items-center gap-4 border-b border-zinc-900/60 bg-[#161616]/40 select-none">
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="bg-red-950/40 text-red-500 font-extrabold px-2 py-0.5 rounded text-[9px] tracking-wide border border-red-900/40 uppercase">
-                          {order.game}
-                        </span>
-                        <span className="text-white font-bold text-xs truncate">{order.packageName}</span>
-                      </div>
-                      <div className="font-mono text-zinc-500 text-[10px] flex items-center gap-1.5 flex-wrap">
-                        <span>ID: {trackingId}</span>
+                  {/* Top Section: Order ID, Game Name, Product Name, Qty & Status Pill */}
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="space-y-1 min-w-0">
+                      {/* Order ID with Copy button */}
+                      <div className="font-mono text-[11px] font-extrabold text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>{trackingId}</span>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             navigator.clipboard.writeText(trackingId);
                             alert(`Copied Order ID: ${trackingId}`);
                           }}
-                          className="text-zinc-500 hover:text-white transition-colors cursor-pointer p-0.5 rounded hover:bg-zinc-900 inline-flex items-center justify-center"
+                          className="text-zinc-400 hover:text-blue-600 transition-colors cursor-pointer p-0.5 rounded hover:bg-zinc-100 inline-flex items-center justify-center"
                           title="Copy Order ID"
                         >
-                          <Copy className="w-3 h-3" />
+                          <Copy className="w-3.5 h-3.5" />
                         </button>
-                        <span>&bull; {new Date(order.timestamp).toLocaleDateString()}</span>
                       </div>
+
+                      {/* Game Name */}
+                      <h4 className="font-sans font-bold text-xs text-blue-600 tracking-wide uppercase">
+                        {order.game}
+                      </h4>
+
+                      {/* Product Name */}
+                      <h3 className="font-sans font-extrabold text-base text-zinc-900 tracking-tight">
+                        {order.packageName}
+                      </h3>
+
+                      {/* Quantity & Type */}
+                      <p className="text-zinc-500 font-medium text-xs">
+                        Qty: {order.quantity || 1} &bull; {order.category === "voucher_code" ? "wallet" : "direct topup"}
+                      </p>
                     </div>
 
-                    <div className="text-right flex flex-col items-end gap-1.5 flex-shrink-0">
-                      <p className="font-mono font-bold text-white text-xs">RS {order.price}</p>
-
+                    {/* Status Pill on Top Right */}
+                    <div className="flex-shrink-0">
                       {order.status === "approved" ? (
-                        <span className="flex items-center gap-1 text-emerald-500 text-[9px] font-bold uppercase tracking-wider bg-emerald-950/30 border border-emerald-900/40 px-2 py-0.5 rounded">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> COMPLETED
+                        <span className="inline-flex items-center justify-center px-4 py-1.5 text-[10px] font-extrabold text-blue-600 bg-blue-50 border border-blue-100 rounded-full tracking-wider uppercase">
+                          COMPLETED
                         </span>
                       ) : order.status === "rejected" ? (
-                        <span className="flex items-center gap-1 text-red-500 text-[9px] font-bold uppercase tracking-wider bg-red-950/30 border border-red-900/40 px-2 py-0.5 rounded">
-                          <XCircle className="w-3.5 h-3.5" /> REJECTED
+                        <span className="inline-flex items-center justify-center px-4 py-1.5 text-[10px] font-extrabold text-red-600 bg-red-50 border border-red-100 rounded-full tracking-wider uppercase">
+                          REJECTED
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 text-amber-500 text-[9px] font-bold uppercase tracking-wider animate-pulse bg-amber-950/30 border border-amber-900/40 px-2 py-0.5 rounded">
-                          <Clock className="w-3.5 h-3.5 animate-spin" /> PENDING
+                        <span className="inline-flex items-center justify-center px-4 py-1.5 text-[10px] font-extrabold text-amber-600 bg-amber-50 border border-amber-100 rounded-full tracking-wider uppercase animate-pulse">
+                          PENDING
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Detailed Body - Always Visible */}
-                  <div className="p-4 space-y-4 text-xs">
-                    {/* Key Details Grid */}
-                    {(() => {
+                  {/* Middle Section: Voucher Box (if approved & codes exist) OR Requirements Area */}
+                  {order.status === "approved" && order.voucher_codes && order.voucher_codes.length > 0 ? (
+                    /* Voucher Code Box */
+                    <div className="border border-emerald-500/20 bg-emerald-50/50 rounded-2xl p-4 space-y-3">
+                      {/* Voucher Box Header */}
+                      <div className="flex justify-between items-center border-b border-emerald-500/10 pb-2">
+                        <span className="text-[11px] text-emerald-700 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+                          <Key className="w-3.5 h-3.5 text-emerald-600" />
+                          YOUR VOUCHER CODE{order.voucher_codes.length > 1 ? `S (${order.voucher_codes.length})` : ""}
+                        </span>
+                        {order.voucher_codes.length > 1 && (
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(order.voucher_codes.join("\n"));
+                              alert("All voucher codes copied to clipboard!");
+                            }}
+                            className="text-[10px] text-emerald-600 hover:text-emerald-800 font-bold uppercase tracking-wider underline cursor-pointer"
+                          >
+                            COPY ALL
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Voucher Code Rows */}
+                      <div className="space-y-2">
+                        {order.voucher_codes.map((code: string, idx: number) => (
+                          <div key={idx} className="flex items-center gap-2.5">
+                            {/* Index Badge */}
+                            <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs flex-shrink-0">
+                              {idx + 1}
+                            </div>
+
+                            {/* Code Text Box */}
+                            <div className="flex-1 min-w-0 bg-white border border-zinc-200/80 rounded-xl px-3.5 py-2 text-zinc-900 font-mono text-xs font-bold tracking-wide shadow-sm truncate select-all">
+                              {code}
+                            </div>
+
+                            {/* Copy button */}
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(code);
+                                alert("Voucher code copied: " + code);
+                              }}
+                              className="w-9 h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center transition-colors cursor-pointer shadow-sm flex-shrink-0"
+                              title="Copy Voucher Code"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Show Order Requirements for custom categories, or if pending/rejected */
+                    (() => {
                       const standardKeys = [
                         "orderId",
                         "userOrderId",
@@ -194,207 +255,82 @@ export default function HistorySection({
                         "status",
                         "timestamp",
                         "voucher_codes",
-                        "id"
+                        "id",
+                        "category"
                       ];
                       const customFields = Object.entries(order).filter(
                         ([key]) => !standardKeys.includes(key)
                       );
 
+                      if (customFields.length === 0) return null;
+
                       return (
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-3 bg-[#0c0c0c] p-3 rounded-xl border border-zinc-900 font-mono">
-                            <div>
-                              <span className="text-[10px] text-zinc-500 block uppercase font-bold">Game/Service Name</span>
-                              <span className="text-white font-bold">{order.game}</span>
-                            </div>
-                            <div>
-                              <span className="text-[10px] text-zinc-500 block uppercase font-bold">Product Package</span>
-                              <span className="text-white font-bold">{order.packageName}</span>
-                            </div>
-                            <div>
-                              <span className="text-[10px] text-zinc-500 block uppercase font-bold">Amount Paid</span>
-                              <span className="text-red-500 font-extrabold">RS {order.price}</span>
-                            </div>
-                            <div>
-                              <span className="text-[10px] text-zinc-500 block uppercase font-bold">Quantity Ordered</span>
-                              <span className="text-emerald-500 font-extrabold">{order.quantity || 1} Pcs</span>
-                            </div>
-                            <div className="col-span-2">
-                              <span className="text-[10px] text-zinc-500 block uppercase font-bold">Purchase Date</span>
-                              <span className="text-zinc-300 text-[11px]">
-                                {new Date(order.timestamp).toLocaleString()}
-                              </span>
-                            </div>
+                        <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4 space-y-3">
+                          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block border-b border-zinc-200/50 pb-1.5">
+                            📝 Submitted Information
+                          </span>
+                          <div className="grid grid-cols-1 gap-2">
+                            {customFields.map(([key, val]: [string, any]) => {
+                              const formattedKey = key
+                                .replace(/([A-Z])/g, ' $1')
+                                .replace(/[_-]/g, ' ')
+                                .trim()
+                                .replace(/^\w/, (c) => c.toUpperCase());
+
+                              const displayVal = typeof val === "object" ? JSON.stringify(val) : String(val);
+
+                              return (
+                                <div key={key} className="bg-white border border-zinc-200/60 p-2.5 px-3.5 rounded-xl font-mono text-xs flex justify-between items-center gap-4 shadow-sm">
+                                  <div className="space-y-0.5 min-w-0 flex-1">
+                                    <span className="text-[9px] text-zinc-400 block uppercase font-bold">{formattedKey}</span>
+                                    <span className="text-zinc-950 font-extrabold tracking-wide break-all">{displayVal}</span>
+                                  </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigator.clipboard.writeText(displayVal);
+                                      alert(`${formattedKey} copied: ${displayVal}`);
+                                    }}
+                                    className="text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer p-1.5 hover:bg-zinc-100 rounded-lg shrink-0"
+                                    title={`Copy ${formattedKey}`}
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              );
+                            })}
                           </div>
-
-                          {/* Dynamically Render Order Requirements only if they exist */}
-                          {customFields.length > 0 && (
-                            <div className="bg-[#0c0c0c]/90 border border-zinc-900 p-4 rounded-xl space-y-2.5">
-                              <span className="text-[10px] text-zinc-400 font-orbitron font-extrabold uppercase tracking-widest block">📝 Filed Requirements</span>
-                              <div className="grid grid-cols-1 gap-2.5">
-                                {customFields.map(([key, val]: [string, any]) => {
-                                  const formattedKey = key
-                                    .replace(/([A-Z])/g, ' $1')
-                                    .replace(/[_-]/g, ' ')
-                                    .trim()
-                                    .replace(/^\w/, (c) => c.toUpperCase());
-                                  
-                                  const displayVal = typeof val === "object" ? JSON.stringify(val) : String(val);
-
-                                  return (
-                                    <div key={key} className="bg-black/40 border border-zinc-900/80 p-2.5 px-3.5 rounded-xl font-mono text-xs flex justify-between items-center gap-4">
-                                      <div className="space-y-0.5 min-w-0 flex-1">
-                                        <span className="text-[9px] text-zinc-500 block uppercase font-bold">{formattedKey}</span>
-                                        <span className="text-white font-extrabold tracking-wide break-all">{displayVal}</span>
-                                      </div>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          navigator.clipboard.writeText(displayVal);
-                                          alert(`${formattedKey} copied: ${displayVal}`);
-                                        }}
-                                        className="text-zinc-500 hover:text-white transition-colors cursor-pointer p-1.5 hover:bg-zinc-900 rounded-lg shrink-0"
-                                        title={`Copy ${formattedKey}`}
-                                      >
-                                        <Copy className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
                         </div>
                       );
-                    })()}
+                    })()
+                  )}
 
-                    {/* Render Voucher Codes if available */}
-                    {order.voucher_codes && order.voucher_codes.length > 0 && (
-                      <div className="bg-[#0c0c0c]/90 border border-zinc-900 p-4 rounded-xl space-y-2.5">
-                        <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
-                          <span className="text-[10px] text-zinc-400 font-orbitron font-extrabold uppercase tracking-widest block">⚡ Your Delivered Voucher Code(s)</span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigator.clipboard.writeText(order.voucher_codes.join("\n"));
-                              alert("All voucher codes copied to clipboard!");
-                            }}
-                            className="text-[10px] bg-red-950/20 hover:bg-red-900/30 text-red-500 font-bold uppercase py-1 px-2.5 rounded-lg border border-red-900/30 transition-all cursor-pointer flex items-center gap-1"
-                          >
-                            <Copy className="w-3 h-3" /> Copy All
-                          </button>
-                        </div>
-                        <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1 no-scrollbar">
-                          {order.voucher_codes.map((code: string, idx: number) => (
-                            <div key={idx} className="flex justify-between items-center bg-black/40 border border-zinc-900/85 p-2.5 px-3.5 rounded-xl font-mono text-xs">
-                              <span className="text-white select-all tracking-wider font-bold">{code}</span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigator.clipboard.writeText(code);
-                                  alert("Voucher code copied: " + code);
-                                }}
-                                className="text-zinc-500 hover:text-white transition-colors cursor-pointer"
-                                title="Copy Code"
-                              >
-                                <Copy className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Custom Visual Steps Progress Tracker */}
-                    <div className="space-y-2">
-                      <span className="text-[9px] text-zinc-500 block uppercase font-bold tracking-wider">
-                        Delivery Status Track
-                      </span>
-                      <div className="grid grid-cols-3 gap-1 relative pt-2">
-                        {/* Line connector background */}
-                        <div className="absolute top-4 left-[16.66%] right-[16.66%] h-0.5 bg-zinc-900 -z-10"></div>
-                        <div
-                          className={`absolute top-4 left-[16.66%] h-0.5 bg-red-600 -z-10 transition-all duration-500`}
-                          style={{
-                            width: order.status === "approved" ? "66.66%" : order.status === "rejected" ? "66.66%" : "33.33%"
-                          }}
-                        ></div>
-
-                        {/* Step 1: Placed */}
-                        <div className="text-center space-y-1">
-                          <div className="w-4.5 h-4.5 rounded-full bg-red-600 text-white font-mono text-[9px] font-bold flex items-center justify-center mx-auto shadow-[0_0_8px_rgba(239,68,68,0.4)]">
-                            1
-                          </div>
-                          <span className="text-[9px] text-zinc-400 font-semibold block uppercase">Placed</span>
-                        </div>
-
-                        {/* Step 2: Verification */}
-                        <div className="text-center space-y-1">
-                          <div
-                            className={`w-4.5 h-4.5 rounded-full font-mono text-[9px] font-bold flex items-center justify-center mx-auto transition-colors ${
-                              order.status !== "pending"
-                                ? "bg-red-600 text-white shadow-[0_0_8px_rgba(239,68,68,0.4)]"
-                                : "bg-zinc-950 text-amber-500 border border-amber-600/60 animate-pulse"
-                            }`}
-                          >
-                            2
-                          </div>
-                          <span className="text-[9px] text-zinc-400 font-semibold block uppercase">Verifying</span>
-                        </div>
-
-                        {/* Step 3: Result */}
-                        <div className="text-center space-y-1">
-                          <div
-                            className={`w-4.5 h-4.5 rounded-full font-mono text-[9px] font-bold flex items-center justify-center mx-auto transition-colors ${
-                              order.status === "approved"
-                                ? "bg-emerald-600 text-white shadow-[0_0_8px_rgba(16,185,129,0.4)]"
-                                : order.status === "rejected"
-                                ? "bg-red-600 text-white"
-                                : "bg-zinc-950 text-zinc-600 border border-zinc-900"
-                            }`}
-                          >
-                            {order.status === "approved" ? "✓" : order.status === "rejected" ? "✗" : "3"}
-                          </div>
-                          <span className="text-[9px] text-zinc-400 font-semibold block uppercase">
-                            {order.status === "approved" ? "Completed" : order.status === "rejected" ? "Failed" : "Delivery"}
-                          </span>
-                        </div>
-                      </div>
+                  {/* Bottom Section: Footer (Price & Date/Time) */}
+                  <div className="flex justify-between items-center border-t border-zinc-100 pt-3 text-xs">
+                    <div className="font-sans font-extrabold text-blue-600 text-sm">
+                      NPR {Number(order.price).toLocaleString()}
                     </div>
-
-                    {/* Status explanation & Action Buttons */}
-                    <div className="bg-[#121212]/80 border border-zinc-900 p-3 rounded-xl space-y-2 text-[11px] leading-relaxed text-zinc-400">
-                      {order.status === "approved" && (
-                        <p>
-                          🏆 <strong className="text-emerald-500">Delivered Successfully!</strong> The game credits have been dispatched directly to your player identification count. Please open or restart your game to reflect the updated diamonds/UC.
-                        </p>
-                      )}
-                      {order.status === "rejected" && (
-                        <p>
-                          ⚠️ <strong className="text-red-500">Order Rejected.</strong> Our team was unable to process this order. The paid points have been restored to your profile balance. Please verify your UID coordinates and order details again.
-                        </p>
-                      )}
-                      {order.status === "pending" && (
-                        <p>
-                          ⌛ <strong className="text-amber-500">Processing...</strong> Our verification staff is confirming your purchase order queue. Estimated delivery time is 5 to 15 minutes.
-                        </p>
-                      )}
-
-                      <div className="flex gap-2 pt-1 font-bold">
-                        <button
-                          onClick={() => handleOrderInquiry(order)}
-                          className="flex-1 bg-red-950/20 hover:bg-red-900/30 text-red-500 hover:text-white border border-red-900/30 py-1.5 rounded-lg text-[10px] uppercase transition-all cursor-pointer flex items-center justify-center gap-1"
-                        >
-                          <MessageSquare className="w-3 h-3" /> Ask Support Team
-                        </button>
-                        <button
-                          onClick={() => copyToClipboard(trackingId, "id")}
-                          className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 py-1.5 px-3 rounded-lg text-[10px] uppercase transition-all cursor-pointer flex items-center justify-center gap-1"
-                        >
-                          <Copy className="w-3 h-3" /> Copy Ref ID
-                        </button>
-                      </div>
+                    <div className="text-zinc-400 text-[11px] font-medium">
+                      {new Date(order.timestamp).toLocaleString("en-US", {
+                        year: "numeric",
+                        month: "numeric",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "numeric",
+                        second: "numeric",
+                        hour12: true
+                      })}
                     </div>
+                  </div>
+
+                  {/* Support Team inquiry button */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleOrderInquiry(order)}
+                      className="flex-1 bg-zinc-50 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-800 border border-zinc-200/85 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" /> Ask Support Team
+                    </button>
                   </div>
                 </div>
               );
