@@ -95,6 +95,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
   const [searchQuery, setSearchQuery] = useState("");
   const [orderFilter, setOrderFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
   const [depositFilter, setDepositFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
+  const [selectedGameFilter, setSelectedGameFilter] = useState<string>("all");
 
   // Sub-navigation inside Dashboard (to toggle users, orders, deposits lists)
   const [dashboardSubTab, setDashboardSubTab] = useState<"orders" | "deposits" | "users" | "banners">("orders");
@@ -982,7 +983,8 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
       o.uniqueId?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const isMatchedFilter = orderFilter === "all" || o.status === orderFilter;
-    return isMatchedQuery && isMatchedFilter;
+    const isMatchedGame = selectedGameFilter === "all" || (o.game && o.game.toLowerCase() === selectedGameFilter.toLowerCase());
+    return isMatchedQuery && isMatchedFilter && isMatchedGame;
   });
 
   const filteredDeposits = allDeposits.filter(d => {
@@ -1109,17 +1111,9 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
 
                 <div className="space-y-1.5">
                   {[
-                    { id: "dashboard", label: "Dashboard", icon: TrendingUp },
-                    { id: "orders", label: `Orders (${pendingOrdersCount})`, icon: ClipboardList },
-                    { id: "deposits", label: `Deposits (${pendingDepositsCount})`, icon: Wallet },
-                    { id: "users", label: `User Balances (${allUsers.length})`, icon: Users },
-                    { id: "categories", label: `Categories (${dbCategories.length})`, icon: Tags },
-                    { id: "games", label: "Games", icon: Database },
-                    { id: "vouchers", label: "Voucher", icon: Ticket },
-                    { id: "products", label: "Products", icon: ShoppingCart },
-                    { id: "requirements", label: "Requirements", icon: Sliders },
-                    { id: "qrcode", label: "QR Code & Payments", icon: QrCode },
-                    { id: "banners", label: "Slide Banners", icon: ImageIcon }
+                    { id: "dashboard", label: "BNY Desk", icon: TrendingUp },
+                    { id: "orders", label: `Fulfill Orders (${pendingOrdersCount})`, icon: ClipboardList },
+                    { id: "deposits", label: `Deposits (${pendingDepositsCount})`, icon: Wallet }
                   ].map((item) => {
                     const Icon = item.icon;
                     const isActive = adminTab === item.id;
@@ -1158,7 +1152,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                       className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-mono font-bold uppercase tracking-wider text-emerald-400 hover:text-white hover:bg-emerald-950/20 border border-emerald-900/30 hover:border-emerald-700/50 transition-all cursor-pointer mt-4"
                     >
                       <UserCheck className="w-4.5 h-4.5 flex-shrink-0" />
-                      <span>Switch to User View</span>
+                      <span>Exit Admin</span>
                     </button>
                   )}
                 </div>
@@ -1276,9 +1270,8 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
               <div className="flex bg-black/40 border border-zinc-900 p-1 rounded-2xl gap-1 text-[9px] font-mono font-bold uppercase tracking-wider">
                 {[
                   { id: "pending", label: `Pending (${pendingOrdersCount})` },
-                  { id: "approved", label: "Approved" },
-                  { id: "rejected", label: "Rejected" },
-                  { id: "all", label: "All Logs" }
+                  { id: "approved", label: "Completed" },
+                  { id: "rejected", label: "Rejected" }
                 ].map(sub => (
                   <button
                     key={sub.id}
@@ -1295,97 +1288,135 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
               </div>
             </div>
 
-            {/* SEARCH */}
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-4.5 h-4.5" />
-              <input
-                type="text"
-                placeholder="Search orders by Player UID, email, game or package name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-black/50 border border-zinc-900 rounded-2xl px-12 py-3.5 text-xs font-mono placeholder-zinc-700 text-white focus:outline-none focus:border-red-500 transition-all shadow-inner"
-              />
-            </div>
-
-            {/* ORDERS SCROLLABLE GRID */}
-            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 no-scrollbar">
-              {filteredOrders.length === 0 ? (
-                <div className="text-center py-20 bg-black/20 border border-zinc-900/50 rounded-3xl">
-                  <p className="text-zinc-500 font-mono text-xs">No orders match the current filter.</p>
-                </div>
-              ) : (
-                filteredOrders.map(order => (
-                  <div key={order.orderId} className="bg-[#0c1322] border border-zinc-900 hover:border-zinc-800 rounded-3xl p-6 space-y-4 transition-all duration-300 shadow-xl">
-                    <div className="flex justify-between items-start gap-4">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="bg-red-500/10 border border-red-500/20 text-red-500 text-[8px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-wider">
-                            {order.game}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Left Column: Game Selector */}
+              <div className="lg:col-span-1 space-y-3">
+                <div className="bg-black/40 border border-zinc-900/80 rounded-3xl p-4">
+                  <h4 className="text-[10px] text-zinc-500 font-mono font-extrabold uppercase tracking-wider mb-3 px-1">Select Game</h4>
+                  <div className="flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 scrollbar-thin">
+                    {["all", ...Array.from(new Set(allOrders.map(o => o.game).filter(Boolean)))].map((gameName: any) => {
+                      const isActive = selectedGameFilter.toLowerCase() === gameName.toLowerCase();
+                      const gameCount = allOrders.filter(o => {
+                        const matchesGame = gameName === "all" || (o.game && o.game.toLowerCase() === gameName.toLowerCase());
+                        const matchesStatus = orderFilter === "all" || o.status === orderFilter;
+                        return matchesGame && matchesStatus;
+                      }).length;
+                      return (
+                        <button
+                          key={gameName}
+                          onClick={() => setSelectedGameFilter(gameName)}
+                          className={`flex-shrink-0 lg:w-full text-left px-3.5 py-2.5 rounded-xl text-[11px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-between gap-4 ${
+                            isActive
+                              ? "bg-red-600 text-white shadow-md shadow-red-500/20"
+                              : "text-zinc-400 hover:text-white hover:bg-zinc-900/40"
+                          }`}
+                        >
+                          <span className="truncate">{gameName === "all" ? "All Games" : gameName}</span>
+                          <span className="text-[9px] bg-black/40 text-zinc-500 px-2 py-0.5 rounded-md font-sans">
+                            {gameCount}
                           </span>
-                          <strong className="text-white text-sm">{order.packageName}</strong>
-                        </div>
-                        <p className="text-[9px] text-zinc-500 font-mono mt-1.5">
-                          Date: {new Date(order.timestamp).toLocaleString()} &bull; Order ID: <span className="text-zinc-400 font-bold">{order.orderId.toUpperCase()}</span>
-                        </p>
-                        <p className="text-[11px] text-zinc-400 mt-0.5">User Email: <strong className="text-zinc-300 font-mono">{order.email}</strong></p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <strong className="text-white font-mono text-base block">NPR {order.price}</strong>
-                        <span className={`inline-block text-[9px] font-bold uppercase font-mono px-2 py-0.5 rounded-full mt-1 ${
-                          order.status === "approved" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : order.status === "rejected" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse"
-                        }`}>
-                          {order.status}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Order Requirements details block */}
-                    <div className="bg-black/40 border border-zinc-900 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono text-zinc-400">
-                      {order.playerUid && (
-                        <div>
-                          <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Player UID</span>
-                          <strong className="text-red-500 text-sm tracking-widest">{order.playerUid}</strong>
-                        </div>
-                      )}
-                      {order.customerEmail && (
-                        <div>
-                          <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Customer Game Email</span>
-                          <strong className="text-white text-xs">{order.customerEmail}</strong>
-                        </div>
-                      )}
-                      {order.customerPassword && (
-                        <div>
-                          <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Activation Password</span>
-                          <strong className="text-white text-xs">{order.customerPassword}</strong>
-                        </div>
-                      )}
-                      {order.whatsappNumber && (
-                        <div>
-                          <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Contact WhatsApp</span>
-                          <strong className="text-white text-xs">{order.whatsappNumber}</strong>
-                        </div>
-                      )}
-                    </div>
-
-                    {order.status === "pending" && (
-                      <div className="flex gap-3 font-mono font-bold">
-                        <button
-                          onClick={() => rejectOrder(order)}
-                          className="flex-1 bg-red-950/20 hover:bg-red-900/30 border border-red-900/30 text-red-500 text-[11px] py-3 rounded-xl cursor-pointer uppercase tracking-wider transition-all"
-                        >
-                          REJECT ORDER
                         </button>
-                        <button
-                          onClick={() => approveOrder(order)}
-                          className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-500 hover:to-red-600 text-[11px] py-3 rounded-xl cursor-pointer uppercase tracking-wider transition-all shadow-lg shadow-red-500/20"
-                        >
-                          DISPATCH DELIVERED
-                        </button>
-                      </div>
-                    )}
+                      );
+                    })}
                   </div>
-                ))
-              )}
+                </div>
+              </div>
+
+              {/* Right Column: Search & Orders List */}
+              <div className="lg:col-span-3 space-y-4">
+                {/* SEARCH */}
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-4.5 h-4.5" />
+                  <input
+                    type="text"
+                    placeholder="Search orders by Player UID, email, game or package name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-black/50 border border-zinc-900 rounded-2xl px-12 py-3.5 text-xs font-mono placeholder-zinc-700 text-white focus:outline-none focus:border-red-500 transition-all shadow-inner"
+                  />
+                </div>
+
+                {/* ORDERS SCROLLABLE GRID */}
+                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 no-scrollbar">
+                  {filteredOrders.length === 0 ? (
+                    <div className="text-center py-20 bg-black/20 border border-zinc-900/50 rounded-3xl">
+                      <p className="text-zinc-500 font-mono text-xs">No orders match the current filters.</p>
+                    </div>
+                  ) : (
+                    filteredOrders.map(order => (
+                      <div key={order.orderId} className="bg-[#0c1322] border border-zinc-900 hover:border-zinc-800 rounded-3xl p-6 space-y-4 transition-all duration-300 shadow-xl">
+                        <div className="flex justify-between items-start gap-4">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="bg-red-500/10 border border-red-500/20 text-red-500 text-[8px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-wider">
+                                {order.game}
+                              </span>
+                              <strong className="text-white text-sm">{order.packageName}</strong>
+                            </div>
+                            <p className="text-[9px] text-zinc-500 font-mono mt-1.5">
+                              Date: {new Date(order.timestamp).toLocaleString()} &bull; Order ID: <span className="text-zinc-400 font-bold">{order.orderId.toUpperCase()}</span>
+                            </p>
+                            <p className="text-[11px] text-zinc-400 mt-0.5">User Email: <strong className="text-zinc-300 font-mono">{order.email}</strong></p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <strong className="text-white font-mono text-base block">NPR {order.price}</strong>
+                            <span className={`inline-block text-[9px] font-bold uppercase font-mono px-2 py-0.5 rounded-full mt-1 ${
+                              order.status === "approved" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : order.status === "rejected" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse"
+                            }`}>
+                              {order.status === "approved" ? "completed" : order.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Order Requirements details block */}
+                        <div className="bg-black/40 border border-zinc-900 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono text-zinc-400">
+                          {order.playerUid && (
+                            <div>
+                              <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Player UID</span>
+                              <strong className="text-red-500 text-sm tracking-widest">{order.playerUid}</strong>
+                            </div>
+                          )}
+                          {order.customerEmail && (
+                            <div>
+                              <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Customer Game Email</span>
+                              <strong className="text-white text-xs">{order.customerEmail}</strong>
+                            </div>
+                          )}
+                          {order.customerPassword && (
+                            <div>
+                              <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Activation Password</span>
+                              <strong className="text-white text-xs">{order.customerPassword}</strong>
+                            </div>
+                          )}
+                          {order.whatsappNumber && (
+                            <div>
+                              <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Contact WhatsApp</span>
+                              <strong className="text-white text-xs">{order.whatsappNumber}</strong>
+                            </div>
+                          )}
+                        </div>
+
+                        {order.status === "pending" && (
+                          <div className="flex gap-3 font-mono font-bold">
+                            <button
+                              onClick={() => rejectOrder(order)}
+                              className="flex-1 bg-red-950/20 hover:bg-red-900/30 border border-red-900/30 text-red-500 text-[11px] py-3 rounded-xl cursor-pointer uppercase tracking-wider transition-all"
+                            >
+                              REJECT ORDER
+                            </button>
+                            <button
+                              onClick={() => approveOrder(order)}
+                              className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-500 hover:to-red-600 text-[11px] py-3 rounded-xl cursor-pointer uppercase tracking-wider transition-all shadow-lg shadow-red-500/20"
+                            >
+                              DISPATCH DELIVERED
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1402,9 +1433,8 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
               <div className="flex bg-black/40 border border-zinc-900 p-1 rounded-2xl gap-1 text-[9px] font-mono font-bold uppercase tracking-wider">
                 {[
                   { id: "pending", label: `Pending (${pendingDepositsCount})` },
-                  { id: "approved", label: "Approved" },
-                  { id: "rejected", label: "Rejected" },
-                  { id: "all", label: "All Logs" }
+                  { id: "approved", label: "Completed" },
+                  { id: "rejected", label: "Rejected" }
                 ].map(sub => (
                   <button
                     key={sub.id}

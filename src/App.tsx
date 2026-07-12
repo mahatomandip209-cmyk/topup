@@ -893,8 +893,8 @@ export default function App() {
   };
 
   const submitDeposit = async () => {
-    if (!walletAmt || !esewaTrx) {
-      alert("Please enter Deposit Amount and Transaction Code.");
+    if (!walletAmt) {
+      alert("Please enter Deposit Amount.");
       return;
     }
     if (!depositProofImage) {
@@ -910,7 +910,7 @@ export default function App() {
         uid: currentUser.uid,
         email: currentUser.email,
         amount: parseInt(walletAmt),
-        trx: esewaTrx,
+        trx: "N/A",
         status: "pending",
         proofImage: depositProofImage, // Base64 encoded screenshot
         timestamp: Date.now(),
@@ -923,7 +923,6 @@ export default function App() {
                   `📧 *Member Email:* ${currentUser.email}\n` +
                   `💳 *Method:* ESEWA\n` +
                   `💰 *Load Amount:* NPR ${walletAmt}\n` +
-                  `🔢 *Transaction Code:* ${esewaTrx}\n` +
                   `🖼️ *Image Proof Included:* Yes (Uploaded directly on platform)`;
 
       const whatsappUrl = `https://wa.me/9779825880400?text=${encodeURIComponent(msg)}`;
@@ -1397,17 +1396,6 @@ export default function App() {
                       </div>
 
                       <div>
-                        <label className="text-zinc-400 block mb-1 uppercase font-bold text-[10px]">Transaction Code / Ref ID</label>
-                        <input
-                          type="text"
-                          placeholder=""
-                          value={esewaTrx}
-                          onChange={(e) => setEsewaTrx(e.target.value)}
-                          className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-4 py-3 rounded-xl focus:outline-none focus:border-red-600 transition-all shadow-inner"
-                        />
-                      </div>
-
-                      <div>
                         <label className="text-zinc-400 block mb-1.5 uppercase font-bold text-[10px]">Upload Image Proof (PNG or JPG Only)</label>
                         <div className="relative border border-dashed border-zinc-800 rounded-xl p-4 bg-black/20 hover:border-red-600/50 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer">
                           <input
@@ -1431,7 +1419,6 @@ export default function App() {
                             <div className="text-center py-2 space-y-1">
                               <span className="text-xl">📷</span>
                               <p className="text-[10px] text-zinc-500 uppercase font-extrabold tracking-wider">Click or Drag to Select Screenshot</p>
-                              <p className="text-[9px] text-zinc-600 font-medium">Supports PNG, JPG, JPEG formats</p>
                             </div>
                           )}
                         </div>

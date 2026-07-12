@@ -171,7 +171,7 @@ export default function HistorySection({
                     {/* Status Pill on Top Right */}
                     <div className="flex-shrink-0">
                       {order.status === "approved" ? (
-                        <span className="inline-flex items-center justify-center px-4 py-1.5 text-[10px] font-extrabold text-blue-600 bg-blue-50 border border-blue-100 rounded-full tracking-wider uppercase">
+                        <span className="inline-flex items-center justify-center px-4 py-1.5 text-[10px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full tracking-wider uppercase">
                           COMPLETED
                         </span>
                       ) : order.status === "rejected" ? (
@@ -179,7 +179,7 @@ export default function HistorySection({
                           REJECTED
                         </span>
                       ) : (
-                        <span className="inline-flex items-center justify-center px-4 py-1.5 text-[10px] font-extrabold text-amber-600 bg-amber-50 border border-amber-100 rounded-full tracking-wider uppercase animate-pulse">
+                        <span className="inline-flex items-center justify-center px-4 py-1.5 text-[10px] font-extrabold text-yellow-600 bg-yellow-50 border border-yellow-100 rounded-full tracking-wider uppercase animate-pulse">
                           PENDING
                         </span>
                       )}
