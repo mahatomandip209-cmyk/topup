@@ -242,6 +242,16 @@ export default function App() {
     active: false,
     message: "",
   });
+  const [voucherSuccessModal, setVoucherSuccessModal] = useState<{
+    active: boolean;
+    codes: string[];
+    gameName: string;
+    packageName: string;
+    orderId: string;
+    finalPrice: number;
+  } | null>(null);
+
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [nameModal, setNameModal] = useState(false);
   const [newNameInput, setNewNameInput] = useState("");
 
@@ -665,6 +675,33 @@ export default function App() {
       return;
     }
 
+    // Fetch and assign voucher codes first if it's a voucher game
+    let assignedVouchers: any[] = [];
+    if (isVoucher) {
+      setLoading(true);
+      try {
+        const snap = await get(ref(db, `games/${activeService.id}/voucher_codes`));
+        const val = snap.val();
+        const allCodesList: any[] = [];
+        if (val) {
+          Object.keys(val).forEach(key => {
+            allCodesList.push({ id: key, ...val[key] });
+          });
+        }
+        const availableCodes = allCodesList.filter(c => c.status === "available" || !c.status);
+        if (availableCodes.length < quantity) {
+          alert(`Not enough voucher codes in stock! Available: ${availableCodes.length}, Requested: ${quantity}`);
+          setLoading(false);
+          return;
+        }
+        assignedVouchers = availableCodes.slice(0, quantity);
+      } catch (err: any) {
+        alert("Error fetching available stock: " + err.message);
+        setLoading(false);
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       // Deduct balance if purchasing
@@ -687,39 +724,58 @@ export default function App() {
         packageName: finalPackageName,
         price: finalPriceNPR,
         quantity: activeService.id === "usdt" ? 1 : quantity,
-        status: "pending",
+        status: isVoucher ? "approved" : "pending",
         timestamp: Date.now(),
-        ...(isVoucher ? {} : fieldsState)
+        ...(isVoucher ? { voucher_codes: assignedVouchers.map(v => v.code) } : fieldsState)
       };
 
       const updates: any = {};
       updates[`all_orders/${orderId}`] = orderPayload;
       updates[`orders/${currentUser.uid}/${userOrderId}`] = orderPayload;
+
+      if (isVoucher) {
+        assignedVouchers.forEach(v => {
+          updates[`games/${activeService.id}/voucher_codes/${v.id}/status`] = "sold";
+          updates[`games/${activeService.id}/voucher_codes/${v.id}/soldTo`] = currentUser.uid;
+          updates[`games/${activeService.id}/voucher_codes/${v.id}/orderId`] = orderId;
+          updates[`games/${activeService.id}/voucher_codes/${v.id}/soldAt`] = Date.now();
+        });
+      }
+
       await update(ref(db), updates);
 
-      // Construct highly-polished WhatsApp notification text
-      const fieldsText = isVoucher
-        ? "🔸 *TYPE:* Instant delivery voucher code\n🔸 *REQUIREMENTS:* None"
-        : Object.keys(fieldsState)
-            .map(key => `🔸 *${key.toUpperCase()}:* ${fieldsState[key]}`)
-            .join("\n");
+      if (isVoucher) {
+        setVoucherSuccessModal({
+          active: true,
+          codes: assignedVouchers.map(v => v.code),
+          gameName: activeService.name,
+          packageName: finalPackageName,
+          orderId: userOrderId || "",
+          finalPrice: finalPriceNPR
+        });
+      } else {
+        // Construct highly-polished WhatsApp notification text
+        const fieldsText = Object.keys(fieldsState)
+          .map(key => `🔸 *${key.toUpperCase()}:* ${fieldsState[key]}`)
+          .join("\n");
 
-      const msg = `🛒 *BNY SHOP NEW ORDER* 🚀\n\n` +
-                  `📦 *Product:* ${activeService.name}\n` +
-                  `💎 *Item:* ${finalPackageName}\n` +
-                  `💰 *Price:* NPR ${finalPriceNPR} (${convertAndFormatPrice(finalPriceNPR)})\n` +
-                  `👤 *User Name:* ${userData.name}\n` +
-                  `📧 *User Email:* ${currentUser.email}\n` +
-                  `🆔 *BNY Unique ID:* ${userData.uniqueId}\n\n` +
-                  `📝 *Fulfillment Details:*\n${fieldsText}`;
+        const msg = `🛒 *BNY SHOP NEW ORDER* 🚀\n\n` +
+                    `📦 *Product:* ${activeService.name}\n` +
+                    `💎 *Item:* ${finalPackageName}\n` +
+                    `💰 *Price:* NPR ${finalPriceNPR} (${convertAndFormatPrice(finalPriceNPR)})\n` +
+                    `👤 *User Name:* ${userData.name}\n` +
+                    `📧 *User Email:* ${currentUser.email}\n` +
+                    `🆔 *BNY Unique ID:* ${userData.uniqueId}\n\n` +
+                    `📝 *Fulfillment Details:*\n${fieldsText}`;
 
-      const whatsappUrl = `https://wa.me/9779825880400?text=${encodeURIComponent(msg)}`;
-      window.open(whatsappUrl, "_blank");
+        const whatsappUrl = `https://wa.me/9779825880400?text=${encodeURIComponent(msg)}`;
+        window.open(whatsappUrl, "_blank");
 
-      setSelectedPkg(null);
-      setFieldsState({});
-      setActiveSection("home");
-      alert("Order placed successfully! Redirecting to verification desk...");
+        setSelectedPkg(null);
+        setFieldsState({});
+        setActiveSection("home");
+        alert("Order placed successfully! Redirecting to verification desk...");
+      }
     } catch (err: any) {
       alert(err.message || "Failed to submit order");
     } finally {
@@ -1311,6 +1367,8 @@ export default function App() {
                     setProfileActiveTab={setProfileActiveTab}
                     setSupportTopic={setSupportTopic}
                     setSupportMessage={setSupportMessage}
+                    expandedOrder={expandedOrderId}
+                    setExpandedOrder={setExpandedOrderId}
                   />
                 </motion.div>
               )}
@@ -1769,6 +1827,97 @@ export default function App() {
                   className="flex-1 bg-brand-blue hover:bg-brand-blue text-white font-bold py-2.5 rounded-xl tracking-wider cursor-pointer transition-colors flex items-center justify-center gap-1 uppercase"
                 >
                   {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Update"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Voucher Purchase Success Modal */}
+      <AnimatePresence>
+        {voucherSuccessModal && voucherSuccessModal.active && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-[999]">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="w-full max-w-sm bg-[#0c0c0c] border border-emerald-500 rounded-3xl p-6 space-y-5 shadow-[0_0_40px_rgba(16,185,129,0.25)] text-center relative"
+            >
+              <div className="text-emerald-500 flex justify-center">
+                <CheckCircle2 className="w-16 h-16 animate-pulse" />
+              </div>
+              
+              <div className="space-y-1.5">
+                <h3 className="font-orbitron font-black text-white text-base tracking-widest uppercase">
+                  Order Completed Successfully
+                </h3>
+                <p className="text-[11px] text-zinc-500 font-mono">
+                  Receipt Ref: ORD-{voucherSuccessModal.orderId.slice(0, 8).toUpperCase()}
+                </p>
+              </div>
+
+              <div className="bg-black/60 border border-zinc-900 rounded-2xl p-4 text-left space-y-3">
+                <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
+                  <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
+                    {voucherSuccessModal.gameName} &bull; {voucherSuccessModal.packageName}
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(voucherSuccessModal.codes.join("\n"));
+                      alert("All delivered codes copied to clipboard!");
+                    }}
+                    className="text-[10px] bg-emerald-950/20 hover:bg-emerald-900/30 text-emerald-500 font-bold uppercase py-1 px-2.5 rounded-lg border border-emerald-900/30 transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <Copy className="w-3 h-3" /> Copy All
+                  </button>
+                </div>
+
+                <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1 no-scrollbar">
+                  {voucherSuccessModal.codes.map((code, idx) => (
+                    <div key={idx} className="flex justify-between items-center bg-zinc-950 border border-zinc-900 p-2.5 rounded-xl font-mono text-xs">
+                      <span className="text-white select-all tracking-wider font-extrabold">{code}</span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(code);
+                          alert("Code copied: " + code);
+                        }}
+                        className="text-zinc-500 hover:text-white transition-colors cursor-pointer"
+                        title="Copy code"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2.5 font-mono text-[11px] uppercase">
+                <button
+                  onClick={() => {
+                    setVoucherSuccessModal(null);
+                    setSelectedPkg(null);
+                    setFieldsState({});
+                    setSelectedCategory("topup");
+                    setActiveSection("home");
+                    window.location.reload();
+                  }}
+                  className="flex-1 bg-zinc-900 hover:bg-zinc-800 text-white font-extrabold py-3 rounded-xl tracking-wider cursor-pointer transition-colors border border-zinc-800"
+                >
+                  OK
+                </button>
+                <button
+                  onClick={() => {
+                    setExpandedOrderId(voucherSuccessModal.orderId);
+                    setHistorySubTab("orders");
+                    setActiveSection("history");
+                    setVoucherSuccessModal(null);
+                    setSelectedPkg(null);
+                    setFieldsState({});
+                  }}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-3 rounded-xl tracking-wider cursor-pointer transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                >
+                  Order Detail
                 </button>
               </div>
             </motion.div>

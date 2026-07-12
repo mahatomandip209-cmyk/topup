@@ -22,6 +22,8 @@ export interface HistorySectionProps {
   setProfileActiveTab: (val: "overview" | "favorites" | "notifications" | "support" | "refer" | "policies") => void;
   setSupportTopic: (val: string) => void;
   setSupportMessage: (val: string) => void;
+  expandedOrder?: string | null;
+  setExpandedOrder?: (val: string | null) => void;
 }
 
 export default function HistorySection({
@@ -33,9 +35,14 @@ export default function HistorySection({
   setActiveSection,
   setProfileActiveTab,
   setSupportTopic,
-  setSupportMessage
+  setSupportMessage,
+  expandedOrder,
+  setExpandedOrder
 }: HistorySectionProps) {
-  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [localExpandedOrder, setLocalExpandedOrder] = useState<string | null>(null);
+  const actualExpandedOrder = expandedOrder !== undefined ? expandedOrder : localExpandedOrder;
+  const actualSetExpandedOrder = setExpandedOrder !== undefined ? setExpandedOrder : setLocalExpandedOrder;
+
   const [expandedDeposit, setExpandedDeposit] = useState<string | null>(null);
 
   const handleOrderInquiry = (order: any) => {
@@ -118,7 +125,7 @@ export default function HistorySection({
           ) : (
             userOrders.map((order) => {
               const trackingId = `ORD-${order.id.slice(0, 8).toUpperCase()}`;
-              const isExpanded = expandedOrder === order.id;
+              const isExpanded = actualExpandedOrder === order.id;
 
               return (
                 <div
@@ -129,7 +136,7 @@ export default function HistorySection({
                 >
                   {/* Summary Item Header */}
                   <div
-                    onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
+                    onClick={() => actualSetExpandedOrder(isExpanded ? null : order.id)}
                     className="p-4 flex justify-between items-center gap-4 cursor-pointer select-none"
                   >
                     <div className="space-y-1 min-w-0 flex-1">
@@ -182,22 +189,29 @@ export default function HistorySection({
                           <span className="text-[10px] text-zinc-500 block uppercase font-bold">Credits Package</span>
                           <span className="text-white font-bold">{order.packageName}</span>
                         </div>
-                        <div>
-                          <span className="text-[10px] text-zinc-500 block uppercase font-bold">Player Game UID</span>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-red-500 font-extrabold tracking-wide text-xs">{order.playerUid}</span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                copyToClipboard(order.playerUid, "id");
-                              }}
-                              className="text-zinc-600 hover:text-white cursor-pointer transition-colors"
-                              title="Copy UID"
-                            >
-                              <Copy className="w-3.5 h-3.5" />
-                            </button>
+                        {order.playerUid ? (
+                          <div>
+                            <span className="text-[10px] text-zinc-500 block uppercase font-bold">Player Game UID</span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-red-500 font-extrabold tracking-wide text-xs">{order.playerUid}</span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyToClipboard(order.playerUid, "id");
+                                }}
+                                className="text-zinc-600 hover:text-white cursor-pointer transition-colors"
+                                title="Copy UID"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div>
+                            <span className="text-[10px] text-zinc-500 block uppercase font-bold">Quantity Ordered</span>
+                            <span className="text-emerald-500 font-extrabold">{order.quantity || 1} Pcs</span>
+                          </div>
+                        )}
                         <div>
                           <span className="text-[10px] text-zinc-500 block uppercase font-bold">Purchase Date</span>
                           <span className="text-zinc-300 text-[11px]">
@@ -205,6 +219,43 @@ export default function HistorySection({
                           </span>
                         </div>
                       </div>
+
+                      {/* Render Voucher Codes if available */}
+                      {order.voucher_codes && order.voucher_codes.length > 0 && (
+                        <div className="bg-[#0c0c0c]/90 border border-zinc-900 p-4 rounded-xl space-y-2.5">
+                          <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
+                            <span className="text-[10px] text-zinc-400 font-orbitron font-extrabold uppercase tracking-widest block">⚡ Your Delivered Voucher Code(s)</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(order.voucher_codes.join("\n"));
+                                alert("All voucher codes copied to clipboard!");
+                              }}
+                              className="text-[10px] bg-red-950/20 hover:bg-red-900/30 text-red-500 font-bold uppercase py-1 px-2.5 rounded-lg border border-red-900/30 transition-all cursor-pointer flex items-center gap-1"
+                            >
+                              <Copy className="w-3 h-3" /> Copy All
+                            </button>
+                          </div>
+                          <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1 no-scrollbar">
+                            {order.voucher_codes.map((code: string, idx: number) => (
+                              <div key={idx} className="flex justify-between items-center bg-black/40 border border-zinc-900/85 p-2.5 px-3.5 rounded-xl font-mono text-xs">
+                                <span className="text-white select-all tracking-wider font-bold">{code}</span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigator.clipboard.writeText(code);
+                                    alert("Voucher code copied: " + code);
+                                  }}
+                                  className="text-zinc-500 hover:text-white transition-colors cursor-pointer"
+                                  title="Copy Code"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Custom Visual Steps Progress Tracker */}
                       <div className="space-y-2">
