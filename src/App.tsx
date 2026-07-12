@@ -411,14 +411,17 @@ export default function App() {
     });
 
     // Fetch user orders history (both standard UID orders and custom forms)
-    const ordersRef = ref(db, `orders/${currentUser.uid}`);
+    const ordersRef = ref(db, "all_orders");
     const unsubscribeOrders = onValue(ordersRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const list = Object.keys(data).map(key => ({
-          id: key,
-          ...data[key]
-        })).sort((a, b: any) => b.timestamp - a.timestamp);
+        const list = Object.keys(data)
+          .map(key => ({
+            id: key,
+            ...data[key]
+          }))
+          .filter(order => order.uid === currentUser.uid)
+          .sort((a, b: any) => b.timestamp - a.timestamp);
         setUserOrders(list);
       } else {
         setUserOrders([]);
@@ -1186,7 +1189,7 @@ export default function App() {
               <div className="flex items-center gap-2 border border-red-600/40 bg-red-950/10 px-3 py-1.5 rounded-xl shadow-[inset_0_0_10px_rgba(220,38,38,0.15)] h-8">
                 <span className="text-zinc-400 font-mono text-[9px] uppercase tracking-wider">Balance:</span>
                 <span className="text-red-500 font-black font-mono text-xs filter drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">
-                  {convertAndFormatPrice(userData?.balance ?? 0)}
+                  {userData ? convertAndFormatPrice(userData.balance ?? 0) : "..."}
                 </span>
               </div>
             </div>
@@ -1245,7 +1248,7 @@ export default function App() {
                   className="space-y-6"
                 >
                   {/* Category Tabs Selector with Red Glowing Design */}
-                  <div className="flex overflow-x-auto whitespace-nowrap no-scrollbar gap-2.5 pb-2.5 border-b border-zinc-900/40 md:justify-center justify-start px-1 max-w-full scroll-smooth">
+                  <div className="flex overflow-x-auto whitespace-nowrap no-scrollbar gap-2.5 pt-2 pb-3.5 border-b border-zinc-900/40 md:justify-center justify-start px-2 max-w-full scroll-smooth">
                     {dbCategories.map((cat) => {
                       const isActive = selectedCategory === cat.id;
                       return (
@@ -1305,7 +1308,7 @@ export default function App() {
                   <div className="text-center py-6 bg-gradient-to-b from-card-bg to-[#070b14] rounded-3xl border border-red-600/30 space-y-1 shadow-[0_0_20px_rgba(220,38,38,0.15)]">
                     <p className="text-zinc-400 text-[10px] uppercase font-mono tracking-widest">Available BNY Store Wallet</p>
                     <h1 className="font-orbitron text-3xl font-extrabold text-red-500 tracking-wider filter drop-shadow-[0_0_10px_rgba(239,68,68,0.65)]">
-                      {convertAndFormatPrice(userData?.balance ?? 0)}
+                      {userData ? convertAndFormatPrice(userData.balance ?? 0) : "..."}
                     </h1>
                   </div>
 
