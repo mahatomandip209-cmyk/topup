@@ -2858,14 +2858,20 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                   }
 
                   try {
-                    const voucherRef = ref(db, `games/${selectedVoucherGameId}/voucher_codes`);
-                    for (const code of codesToAdd) {
-                      await push(voucherRef, {
+                    const updatedVoucherCodes = { ...rawCodes };
+                    codesToAdd.forEach(code => {
+                      const codeId = "vcode_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7);
+                      updatedVoucherCodes[codeId] = {
                         code: code,
                         status: "available",
                         createdAt: new Date().toISOString()
-                      });
-                    }
+                      };
+                    });
+
+                    await update(ref(db, `games/${selectedVoucherGameId}`), {
+                      voucher_codes: updatedVoucherCodes
+                    });
+
                     setVoucherTextArea("");
                     alert(`Successfully added ${codesToAdd.length} voucher codes!`);
                   } catch (err: any) {
@@ -2876,7 +2882,11 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                 const handleDeleteCode = async (codeId: string) => {
                   if (confirm("Are you sure you want to delete this voucher code?")) {
                     try {
-                      await remove(ref(db, `games/${selectedVoucherGameId}/voucher_codes/${codeId}`));
+                      const updatedVoucherCodes = { ...rawCodes };
+                      delete updatedVoucherCodes[codeId];
+                      await update(ref(db, `games/${selectedVoucherGameId}`), {
+                        voucher_codes: updatedVoucherCodes
+                      });
                       alert("Voucher code deleted.");
                     } catch (err: any) {
                       alert("Error deleting: " + err.message);

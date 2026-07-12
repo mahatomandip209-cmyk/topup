@@ -677,15 +677,22 @@ export default function App() {
 
     // Fetch and assign voucher codes first if it's a voucher game
     let assignedVouchers: any[] = [];
+    let updatedVoucherCodesMap: any = null;
+    
+    // Generate order IDs early so we have them for the voucher markers and the payloads
+    const orderId = push(ref(db, "all_orders")).key || "";
+    const userOrderId = push(ref(db, `orders/${currentUser.uid}`)).key || "";
+
     if (isVoucher) {
       setLoading(true);
       try {
-        const snap = await get(ref(db, `games/${activeService.id}/voucher_codes`));
-        const val = snap.val();
+        const snap = await get(ref(db, `games/${activeService.id}`));
+        const gameVal = snap.val();
+        const rawVoucherCodes = gameVal ? gameVal.voucher_codes : null;
         const allCodesList: any[] = [];
-        if (val) {
-          Object.keys(val).forEach(key => {
-            allCodesList.push({ id: key, ...val[key] });
+        if (rawVoucherCodes) {
+          Object.keys(rawVoucherCodes).forEach(key => {
+            allCodesList.push({ id: key, ...rawVoucherCodes[key] });
           });
         }
         const availableCodes = allCodesList.filter(c => c.status === "available" || !c.status);
@@ -695,6 +702,19 @@ export default function App() {
           return;
         }
         assignedVouchers = availableCodes.slice(0, quantity);
+
+        // Prepare the updated voucher codes map to save back
+        updatedVoucherCodesMap = { ...rawVoucherCodes };
+        assignedVouchers.forEach(v => {
+          updatedVoucherCodesMap[v.id] = {
+            ...v,
+            status: "sold",
+            soldTo: currentUser.uid,
+            orderId: orderId,
+            soldAt: Date.now()
+          };
+          delete updatedVoucherCodesMap[v.id].id; // clean up key
+        });
       } catch (err: any) {
         alert("Error fetching available stock: " + err.message);
         setLoading(false);
@@ -709,10 +729,6 @@ export default function App() {
         const newBal = userData.balance - finalPriceNPR;
         await update(ref(db, `users/${currentUser.uid}`), { balance: newBal });
       }
-
-      // Push order to global node for admin auditing and individual user node
-      const orderId = push(ref(db, "all_orders")).key;
-      const userOrderId = push(ref(db, `orders/${currentUser.uid}`)).key;
 
       const orderPayload = {
         orderId,
@@ -733,13 +749,10 @@ export default function App() {
       updates[`all_orders/${orderId}`] = orderPayload;
       updates[`orders/${currentUser.uid}/${userOrderId}`] = orderPayload;
 
-      if (isVoucher) {
-        assignedVouchers.forEach(v => {
-          updates[`games/${activeService.id}/voucher_codes/${v.id}/status`] = "sold";
-          updates[`games/${activeService.id}/voucher_codes/${v.id}/soldTo`] = currentUser.uid;
-          updates[`games/${activeService.id}/voucher_codes/${v.id}/orderId`] = orderId;
-          updates[`games/${activeService.id}/voucher_codes/${v.id}/soldAt`] = Date.now();
-        });
+      if (isVoucher && updatedVoucherCodesMap) {
+        updates[`games/${activeService.id}`] = {
+          voucher_codes: updatedVoucherCodesMap
+        };
       }
 
       await update(ref(db), updates);
