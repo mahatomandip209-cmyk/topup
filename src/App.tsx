@@ -124,6 +124,7 @@ export default function App() {
 
   // Dynamic DB-loaded games list
   const [dbServices, setDbServices] = useState<ServiceItem[]>([]);
+  const [servicesLoading, setServicesLoading] = useState<boolean>(true);
 
   // Dynamic DB-loaded payment settings
   const [paymentSettings, setPaymentSettings] = useState({
@@ -164,6 +165,7 @@ export default function App() {
         set(gamesRef, servicesData);
         setDbServices(servicesData);
       }
+      setServicesLoading(false);
     });
 
     const categoriesRef = ref(db, "categories");
@@ -1249,49 +1251,72 @@ export default function App() {
                 >
                   {/* Category Tabs Selector with Red Glowing Design */}
                   <div className="flex overflow-x-auto whitespace-nowrap no-scrollbar gap-2.5 pt-2 pb-3.5 border-b border-zinc-900/40 md:justify-center justify-start px-2 max-w-full scroll-smooth">
-                    {dbCategories.map((cat) => {
-                      const isActive = selectedCategory === cat.id;
-                      return (
-                        <button
-                          key={cat.id}
-                          onClick={() => setSelectedCategory(cat.id)}
-                          className={`px-4 py-2.5 rounded-xl font-orbitron font-extrabold text-[11px] uppercase tracking-wider transition-all duration-300 border cursor-pointer text-center shrink-0 ${
-                            isActive
-                              ? "bg-red-950/45 border-red-600 text-red-500 shadow-[0_0_15px_rgba(220,38,38,0.65)] scale-105"
-                              : "bg-black/40 border-zinc-900 text-zinc-500 hover:text-zinc-300 hover:border-zinc-800"
-                          }`}
-                        >
-                          {cat.name}
-                        </button>
-                      );
-                    })}
+                    {servicesLoading ? (
+                      [1, 2, 3].map((n) => (
+                        <div
+                          key={n}
+                          className="px-8 py-4 bg-zinc-900/20 border border-zinc-950 rounded-xl w-32 animate-pulse shrink-0"
+                        ></div>
+                      ))
+                    ) : (
+                      dbCategories.map((cat) => {
+                        const isActive = selectedCategory === cat.id;
+                        return (
+                          <button
+                            key={cat.id}
+                            onClick={() => setSelectedCategory(cat.id)}
+                            className={`px-4 py-2.5 rounded-xl font-orbitron font-extrabold text-[11px] uppercase tracking-wider transition-all duration-300 border cursor-pointer text-center shrink-0 ${
+                              isActive
+                                ? "bg-red-950/45 border-red-600 text-red-500 shadow-[0_0_15px_rgba(220,38,38,0.65)] scale-105"
+                                : "bg-black/40 border-zinc-900 text-zinc-500 hover:text-zinc-300 hover:border-zinc-800"
+                            }`}
+                          >
+                            {cat.name}
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
-                    {(dbServices.length > 0 ? dbServices : servicesData)
-                      .filter((service) => service.category === selectedCategory)
-                      .map((service) => (
+                  {servicesLoading ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 animate-pulse">
+                      {[1, 2, 3].map((n) => (
                         <div
-                          key={service.id}
-                          onClick={() => openTopup(service)}
-                          className="group bg-card-bg rounded-2xl overflow-hidden border border-zinc-900 hover:border-red-600 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] active:scale-95 flex flex-col justify-between"
+                          key={n}
+                          className="bg-card-bg rounded-2xl overflow-hidden border border-zinc-900 p-2 flex flex-col justify-between h-[150px]"
                         >
-                          <div className="relative aspect-[4/3] overflow-hidden bg-black/60 flex items-center justify-center p-2 border-b border-zinc-900/40">
-                            <img
-                              src={service.image}
-                              alt={service.name}
-                              referrerPolicy="no-referrer"
-                              className="w-full h-full object-contain group-hover:scale-105 transition-all duration-500"
-                            />
-                          </div>
-                          <div className="p-3 text-center bg-black/10">
-                            <p className="font-bold tracking-wider text-xs text-white group-hover:text-red-500 group-hover:filter group-hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.6)] transition-all">
-                              {service.name}
-                            </p>
-                          </div>
+                          <div className="bg-zinc-900/60 rounded-xl w-full h-[100px]"></div>
+                          <div className="h-4 bg-zinc-900/60 rounded w-2/3 mx-auto mt-2"></div>
                         </div>
                       ))}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+                      {dbServices
+                        .filter((service) => service.category === selectedCategory)
+                        .map((service) => (
+                          <div
+                            key={service.id}
+                            onClick={() => openTopup(service)}
+                            className="group bg-card-bg rounded-2xl overflow-hidden border border-zinc-900 hover:border-red-600 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] active:scale-95 flex flex-col justify-between"
+                          >
+                            <div className="relative aspect-[4/3] overflow-hidden bg-black/60 flex items-center justify-center p-2 border-b border-zinc-900/40">
+                              <img
+                                src={service.image}
+                                alt={service.name}
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-contain group-hover:scale-105 transition-all duration-500"
+                              />
+                            </div>
+                            <div className="p-3 text-center bg-black/10">
+                              <p className="font-bold tracking-wider text-xs text-white group-hover:text-red-500 group-hover:filter group-hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.6)] transition-all">
+                                {service.name}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </motion.div>
               )}
 
