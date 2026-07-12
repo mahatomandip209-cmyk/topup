@@ -128,6 +128,14 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
   const [editReqName, setEditReqName] = useState("");
   const [editReqType, setEditReqType] = useState<"text" | "number">("text");
 
+  // Game-specific Requirements State
+  const [selectedReqGameId, setSelectedReqGameId] = useState<string | null>(null);
+  const [isAddReqModalOpen, setIsAddReqModalOpen] = useState(false);
+  const [isEditReqModalOpen, setIsEditReqModalOpen] = useState(false);
+  const [reqModalName, setReqModalName] = useState("");
+  const [reqModalType, setReqModalType] = useState<"text" | "number">("text");
+  const [editingReqIdx, setEditingReqIdx] = useState<number | null>(null);
+
   // Load all DB lists
   useEffect(() => {
     // 1. Fetch Users
@@ -762,6 +770,101 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
     reader.readAsDataURL(file);
   };
 
+  // ---------------- GAME-SPECIFIC REQUIREMENTS CRUD ----------------
+  const handleAddGameRequirement = async () => {
+    if (!selectedReqGameId) return;
+    if (!reqModalName.trim()) {
+      alert("Requirement Name is required");
+      return;
+    }
+
+    const gameObj = dbGames.find(g => g.id === selectedReqGameId);
+    if (!gameObj) return;
+
+    const labelStr = reqModalName.trim();
+    const keyStr = labelStr.toLowerCase().replace(/[^a-z0-9]/g, "") || "field";
+    const newField = {
+      label: labelStr,
+      type: reqModalType,
+      placeholder: `e.g. Enter ${labelStr}`,
+      key: keyStr
+    };
+
+    const currentFields = gameObj.fields || [];
+    // Prevent duplicate labels
+    if (currentFields.some((f: any) => f.label.toLowerCase() === labelStr.toLowerCase())) {
+      alert("A requirement with this name already exists for this game.");
+      return;
+    }
+
+    const updatedFields = [...currentFields, newField];
+
+    try {
+      await update(ref(db, `games/${selectedReqGameId}`), { fields: updatedFields });
+      setReqModalName("");
+      setReqModalType("text");
+      setIsAddReqModalOpen(false);
+      alert("Requirement added successfully!");
+    } catch (err: any) {
+      alert("Error adding requirement: " + err.message);
+    }
+  };
+
+  const handleUpdateGameRequirement = async () => {
+    if (!selectedReqGameId || editingReqIdx === null) return;
+    if (!reqModalName.trim()) {
+      alert("Requirement Name is required");
+      return;
+    }
+
+    const gameObj = dbGames.find(g => g.id === selectedReqGameId);
+    if (!gameObj) return;
+
+    const labelStr = reqModalName.trim();
+    const keyStr = labelStr.toLowerCase().replace(/[^a-z0-9]/g, "") || "field";
+    const updatedFields = [...(gameObj.fields || [])];
+
+    // Prevent duplicates for other items
+    if (updatedFields.some((f: any, idx: number) => idx !== editingReqIdx && f.label.toLowerCase() === labelStr.toLowerCase())) {
+      alert("A requirement with this name already exists for this game.");
+      return;
+    }
+
+    updatedFields[editingReqIdx] = {
+      label: labelStr,
+      type: reqModalType,
+      placeholder: `e.g. Enter ${labelStr}`,
+      key: keyStr
+    };
+
+    try {
+      await update(ref(db, `games/${selectedReqGameId}`), { fields: updatedFields });
+      setReqModalName("");
+      setReqModalType("text");
+      setEditingReqIdx(null);
+      setIsEditReqModalOpen(false);
+      alert("Requirement updated successfully!");
+    } catch (err: any) {
+      alert("Error updating requirement: " + err.message);
+    }
+  };
+
+  const handleDeleteGameRequirement = async (idxToDelete: number) => {
+    if (!selectedReqGameId) return;
+    const gameObj = dbGames.find(g => g.id === selectedReqGameId);
+    if (!gameObj) return;
+
+    if (confirm("Are you sure you want to delete this requirement?")) {
+      const updatedFields = (gameObj.fields || []).filter((_: any, idx: number) => idx !== idxToDelete);
+      try {
+        await update(ref(db, `games/${selectedReqGameId}`), { fields: updatedFields });
+        alert("Requirement deleted successfully.");
+      } catch (err: any) {
+        alert("Error deleting requirement: " + err.message);
+      }
+    }
+  };
+
   // ---------------- REQUIREMENTS CRUD ----------------
   const handleAddRequirement = async () => {
     if (!newReqName.trim()) {
@@ -992,8 +1095,8 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                     { id: "categories", label: `Categories (${dbCategories.length})`, icon: Tags },
                     { id: "games", label: "Games", icon: Database },
                     { id: "products", label: "Products", icon: ShoppingCart },
-                    { id: "qrcode", label: "QR Code & Payments", icon: QrCode },
                     { id: "requirements", label: "Requirements", icon: Sliders },
+                    { id: "qrcode", label: "QR Code & Payments", icon: QrCode },
                     { id: "banners", label: "Slide Banners", icon: ImageIcon }
                   ].map((item) => {
                     const Icon = item.icon;
@@ -1005,6 +1108,9 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                           setAdminTab(item.id as any);
                           setIsSidebarOpen(false);
                           setSearchQuery("");
+                          if (item.id === "requirements") {
+                            setSelectedReqGameId(null);
+                          }
                         }}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${
                           isActive
@@ -2341,130 +2447,301 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
         {/* 5. REQUIREMENTS CRUD MANAGER */}
         {adminTab === "requirements" && (
           <div className="space-y-6">
-            {/* ADD REQUIREMENT FORM */}
-            <div className="bg-black/30 border border-zinc-900 p-5 rounded-2xl space-y-4 font-mono text-xs">
-              <span className="text-[10px] text-red-500 font-extrabold uppercase tracking-widest block">
-                Add Checkout Requirement Option
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-zinc-500 block mb-1 uppercase text-[9px] font-bold">Select Input Field Type</label>
-                  <select
-                    value={newReqType}
-                    onChange={(e) => setNewReqType(e.target.value as any)}
-                    className="w-full bg-black border border-zinc-900 rounded-lg py-2 px-3 text-white uppercase focus:outline-none focus:border-red-500"
-                  >
-                    <option value="text">Text Field</option>
-                    <option value="number">Number Field</option>
-                  </select>
+            {!selectedReqGameId ? (
+              // 5.1 GAME LIST PAGE
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-black/30 border border-zinc-900 p-5 rounded-2xl">
+                  <div>
+                    <h3 className="font-orbitron font-extrabold text-white text-md uppercase tracking-wider">
+                      Game Requirements Manager
+                    </h3>
+                    <p className="text-xs text-zinc-500 font-sans mt-0.5">Select a game to customize checkout input fields (e.g., Player UID, Server ID).</p>
+                  </div>
+                  
+                  {/* SEARCH GAMES INPUT */}
+                  <div className="relative max-w-xs w-full">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 w-4 h-4" />
+                    <input
+                      type="text"
+                      placeholder="Search game..."
+                      value={newReqName}
+                      onChange={(e) => setNewReqName(e.target.value)}
+                      className="w-full bg-black border border-zinc-900 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-red-500 font-mono"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-zinc-500 block mb-1 uppercase text-[9px] font-bold">Requirement Name (Label)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Player UID, Server ID"
-                    value={newReqName}
-                    onChange={(e) => setNewReqName(e.target.value)}
-                    className="w-full bg-black border border-zinc-900 rounded-lg py-2 px-3 text-white focus:outline-none focus:border-red-500"
-                  />
-                </div>
-              </div>
-
-              <button
-                onClick={handleAddRequirement}
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl uppercase cursor-pointer transition-colors"
-              >
-                Add Requirement Option
-              </button>
-            </div>
-
-            {/* LIST OF REQUIREMENTS */}
-            <div className="space-y-3">
-              <span className="text-[10px] text-zinc-500 font-extrabold font-mono uppercase tracking-widest block">
-                All Available Order Requirements ({globalRequirements.length})
-              </span>
-
-              <div className="grid grid-cols-1 gap-3.5 max-h-[400px] overflow-y-auto pr-1 no-scrollbar text-xs font-mono">
-                {globalRequirements.length === 0 ? (
-                  <p className="text-center py-10 text-zinc-600">No custom requirement options configured yet.</p>
-                ) : (
-                  globalRequirements.map(req => {
-                    const isEditingReq = editingReqId === req.id;
-                    return (
-                      <div key={req.id} className="bg-black/40 border border-zinc-900 p-3.5 rounded-2xl flex items-center justify-between gap-4">
-                        {isEditingReq ? (
-                          <div className="flex-1 flex gap-2.5 items-end">
-                            <div className="flex-1">
-                              <label className="text-zinc-600 block text-[7px] uppercase font-bold mb-0.5">Label</label>
-                              <input
-                                type="text"
-                                value={editReqName}
-                                onChange={(e) => setEditReqName(e.target.value)}
-                                className="w-full bg-black border border-zinc-800 rounded p-1.5 text-xs text-white focus:outline-none focus:border-red-500"
-                              />
-                            </div>
-                            <div className="w-32">
-                              <label className="text-zinc-600 block text-[7px] uppercase font-bold mb-0.5">Type</label>
-                              <select
-                                value={editReqType}
-                                onChange={(e) => setEditReqType(e.target.value as any)}
-                                className="w-full bg-black border border-zinc-800 rounded p-1.5 text-xs text-white focus:outline-none"
-                              >
-                                <option value="text">text</option>
-                                <option value="number">number</option>
-                              </select>
-                            </div>
-                            <div className="flex gap-1.5 font-bold">
-                              <button
-                                onClick={() => setEditingReqId(null)}
-                                className="px-2 py-1.5 bg-zinc-900 border border-zinc-850 rounded text-[9px] cursor-pointer"
-                              >
-                                CANCEL
-                              </button>
-                              <button
-                                onClick={handleUpdateRequirement}
-                                className="px-2.5 py-1.5 bg-red-600 rounded text-white text-[9px] cursor-pointer"
-                              >
-                                SAVE
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
+                {/* GAMES GRID */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {dbGames
+                    .filter(g => !newReqName || g.name.toLowerCase().includes(newReqName.toLowerCase()))
+                    .map(game => {
+                      const reqCount = game.fields?.length || 0;
+                      return (
+                        <div
+                          key={game.id}
+                          onClick={() => {
+                            setSelectedReqGameId(game.id);
+                            setNewReqName(""); // Clear game search after selection
+                          }}
+                          className="bg-black/35 border border-zinc-900/80 hover:border-zinc-850 p-4 rounded-2xl flex items-center justify-between gap-4 cursor-pointer hover:bg-black/50 hover:scale-[1.01] transition-all group duration-200"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={game.image || "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=280"}
+                              alt={game.name}
+                              className="w-12 h-12 rounded-xl object-cover border border-zinc-900"
+                              referrerPolicy="no-referrer"
+                            />
                             <div>
-                              <strong className="text-white text-xs">{req.name}</strong>
-                              <span className="bg-zinc-900 border border-zinc-800 text-zinc-500 text-[8px] font-mono px-1.5 py-0.2 ml-2 roundeduppercase">
-                                {req.type}
+                              <strong className="text-white text-sm group-hover:text-red-500 transition-colors block">{game.name}</strong>
+                              <span className="bg-zinc-900/60 border border-zinc-900 text-zinc-400 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded uppercase">
+                                {game.category || "topup"}
                               </span>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                onClick={() => {
-                                  setEditingReqId(req.id);
-                                  setEditReqName(req.name);
-                                  setEditReqType(req.type || "text");
-                                }}
-                                className="p-1.5 hover:bg-zinc-900 text-zinc-500 hover:text-white border border-transparent hover:border-zinc-800 rounded-lg cursor-pointer animate-none"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteRequirement(req.id)}
-                                className="p-1.5 hover:bg-red-950/25 text-zinc-500 hover:text-red-500 border border-transparent hover:border-red-900/20 rounded-lg cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] text-zinc-500 font-mono block uppercase">Requirements</span>
+                            <span className="font-orbitron font-black text-xs text-red-500 block">
+                              {reqCount} {reqCount === 1 ? "Field" : "Fields"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  {dbGames.filter(g => !newReqName || g.name.toLowerCase().includes(newReqName.toLowerCase())).length === 0 && (
+                    <div className="col-span-full py-16 text-center text-zinc-600 font-mono text-xs">
+                      No games matched your search.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              // 5.2 NEW2 PAGE: DETAILED GAME REQUIREMENTS
+              (() => {
+                const gameObj = dbGames.find(g => g.id === selectedReqGameId);
+                if (!gameObj) return <div className="text-center font-mono py-10 text-zinc-500">Game not found</div>;
+                const requirementsList = gameObj.fields || [];
+
+                return (
+                  <div className="space-y-6">
+                    {/* TOP HEADER BLOCK WITH BACK AND ADD OPTION */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-black/30 border border-zinc-900 p-5 rounded-2xl">
+                      <div className="flex items-center gap-4">
+                        <button
+                          onClick={() => setSelectedReqGameId(null)}
+                          className="p-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white rounded-xl cursor-pointer transition-colors"
+                          title="Back to Games"
+                        >
+                          <ArrowLeft className="w-4 h-4" />
+                        </button>
+                        
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={gameObj.image}
+                            alt={gameObj.name}
+                            className="w-12 h-12 rounded-xl object-cover border border-zinc-900"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div>
+                            <span className="text-[9px] text-zinc-500 font-mono uppercase tracking-widest block">Managing requirements for</span>
+                            <h3 className="font-orbitron font-extrabold text-white text-md uppercase tracking-wider">{gameObj.name}</h3>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ADD REQUIREMENT BUTTON */}
+                      <button
+                        onClick={() => {
+                          setReqModalName("");
+                          setReqModalType("text");
+                          setIsAddReqModalOpen(true);
+                        }}
+                        className="bg-red-600 hover:bg-red-700 text-white font-mono font-bold text-xs uppercase tracking-wider px-5 py-3 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Requirements
+                      </button>
+                    </div>
+
+                    {/* CURRENT REQUIREMENTS LIST */}
+                    <div className="space-y-3">
+                      <span className="text-[10px] text-zinc-500 font-extrabold font-mono uppercase tracking-widest block">
+                        Available Current Requirements ({requirementsList.length})
+                      </span>
+
+                      <div className="grid grid-cols-1 gap-3 max-h-[500px] overflow-y-auto pr-1 no-scrollbar text-xs font-mono">
+                        {requirementsList.length === 0 ? (
+                          <div className="bg-black/20 border border-zinc-900 border-dashed py-12 rounded-2xl text-center space-y-2">
+                            <p className="text-zinc-600">No requirements defined for this game yet.</p>
+                            <p className="text-[10px] text-zinc-500 font-sans">Click the "Add Requirements" button above to add fields like Player ID, Server ID, etc.</p>
+                          </div>
+                        ) : (
+                          requirementsList.map((req: any, idx: number) => (
+                            <div key={idx} className="bg-black/40 border border-zinc-900 p-4 rounded-2xl flex items-center justify-between gap-4">
+                              <div>
+                                <span className="text-[10px] text-zinc-500 block uppercase font-mono tracking-widest mb-0.5">Field #{idx + 1}</span>
+                                <div className="flex items-center gap-2">
+                                  <strong className="text-white text-sm">{req.label}</strong>
+                                  <span className="bg-zinc-900 border border-zinc-800 text-zinc-500 text-[8px] font-mono px-2 py-0.5 rounded uppercase">
+                                    {req.type}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingReqIdx(idx);
+                                    setReqModalName(req.label);
+                                    setReqModalType(req.type || "text");
+                                    setIsEditReqModalOpen(true);
+                                  }}
+                                  className="p-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white rounded-xl cursor-pointer transition-colors"
+                                  title="Edit Requirement"
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteGameRequirement(idx)}
+                                  className="p-2.5 bg-red-950/20 hover:bg-red-900/20 border border-red-950 text-red-500 rounded-xl cursor-pointer transition-colors"
+                                  title="Delete Requirement"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
-                          </>
+                          ))
                         )}
                       </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+
+            {/* ADD REQUIREMENT POPUP MODAL */}
+            <AnimatePresence>
+              {isAddReqModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="bg-[#0b111e] border border-zinc-900 rounded-3xl p-6 w-full max-w-sm space-y-5 shadow-2xl relative"
+                  >
+                    <button
+                      onClick={() => setIsAddReqModalOpen(false)}
+                      className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+
+                    <div className="space-y-1">
+                      <h4 className="font-orbitron font-extrabold text-lg text-white uppercase tracking-wider">
+                        Add Requirement
+                      </h4>
+                      <p className="text-xs text-zinc-500 font-sans">Create a checkout input requirement for users.</p>
+                    </div>
+
+                    <div className="space-y-4 font-mono text-xs text-left">
+                      <div>
+                        <label className="text-zinc-400 block mb-1 uppercase text-[9px] font-bold">Requirement Name (Label)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Player UID, Server ID"
+                          value={reqModalName}
+                          onChange={(e) => setReqModalName(e.target.value)}
+                          className="w-full bg-black border border-zinc-900 rounded-lg py-2 px-3 text-white focus:outline-none focus:border-red-500 font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-zinc-400 block mb-1 uppercase text-[9px] font-bold">Field Input Type</label>
+                        <select
+                          value={reqModalType}
+                          onChange={(e) => setReqModalType(e.target.value as any)}
+                          className="w-full bg-black border border-zinc-900 rounded-lg py-2 px-3 text-white uppercase focus:outline-none focus:border-red-500 font-mono"
+                        >
+                          <option value="text">Text / Character Field</option>
+                          <option value="number">Numeric Field Only</option>
+                        </select>
+                      </div>
+
+                      <button
+                        onClick={handleAddGameRequirement}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl uppercase cursor-pointer transition-colors mt-2"
+                      >
+                        Add Requirement
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
+
+            {/* EDIT REQUIREMENT POPUP MODAL */}
+            <AnimatePresence>
+              {isEditReqModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="bg-[#0b111e] border border-zinc-900 rounded-3xl p-6 w-full max-w-sm space-y-5 shadow-2xl relative"
+                  >
+                    <button
+                      onClick={() => {
+                        setIsEditReqModalOpen(false);
+                        setEditingReqIdx(null);
+                      }}
+                      className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+
+                    <div className="space-y-1">
+                      <h4 className="font-orbitron font-extrabold text-lg text-white uppercase tracking-wider">
+                        Edit Requirement
+                      </h4>
+                      <p className="text-xs text-zinc-500 font-sans">Modify requirement details.</p>
+                    </div>
+
+                    <div className="space-y-4 font-mono text-xs text-left">
+                      <div>
+                        <label className="text-zinc-400 block mb-1 uppercase text-[9px] font-bold">Requirement Name (Label)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Player UID, Server ID"
+                          value={reqModalName}
+                          onChange={(e) => setReqModalName(e.target.value)}
+                          className="w-full bg-black border border-zinc-900 rounded-lg py-2 px-3 text-white focus:outline-none focus:border-red-500 font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-zinc-400 block mb-1 uppercase text-[9px] font-bold">Field Input Type</label>
+                        <select
+                          value={reqModalType}
+                          onChange={(e) => setReqModalType(e.target.value as any)}
+                          className="w-full bg-black border border-zinc-900 rounded-lg py-2 px-3 text-white uppercase focus:outline-none focus:border-red-500 font-mono"
+                        >
+                          <option value="text">Text / Character Field</option>
+                          <option value="number">Numeric Field Only</option>
+                        </select>
+                      </div>
+
+                      <button
+                        onClick={handleUpdateGameRequirement}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl uppercase cursor-pointer transition-colors mt-2"
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 

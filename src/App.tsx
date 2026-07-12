@@ -642,7 +642,7 @@ export default function App() {
       finalPackageName = quantity > 1 ? `${selectedPkg.n} (Qty: ${quantity})` : selectedPkg.n;
 
       // Validate dynamic fields based on configurations
-      if (activeService.category !== "voucher") {
+      if (!isVoucher) {
         const fieldsToValidate = (activeService.category === "topup" && (!activeService.fields || activeService.fields.length === 0))
           ? [{ label: "Player UID", placeholder: "e.g. 5839218392", type: "text", key: "playerUid" }]
           : activeService.fields;
@@ -690,7 +690,7 @@ export default function App() {
         quantity: activeService.id === "usdt" ? 1 : quantity,
         status: "pending",
         timestamp: Date.now(),
-        ...(activeService.category === "voucher" ? {} : fieldsState)
+        ...(isVoucher ? {} : fieldsState)
       };
 
       const updates: any = {};
@@ -699,7 +699,7 @@ export default function App() {
       await update(ref(db), updates);
 
       // Construct highly-polished WhatsApp notification text
-      const fieldsText = activeService.category === "voucher"
+      const fieldsText = isVoucher
         ? "🔸 *TYPE:* Instant delivery voucher code\n🔸 *REQUIREMENTS:* None"
         : Object.keys(fieldsState)
             .map(key => `🔸 *${key.toUpperCase()}:* ${fieldsState[key]}`)
@@ -811,6 +811,8 @@ export default function App() {
       setTimeout(() => setCopiedId(false), 2000);
     }
   };
+
+  const isVoucher = activeService?.category?.toLowerCase() === "voucher" || activeService?.category?.toLowerCase().includes("voucher");
 
   return (
     <div className="min-h-screen bg-bg-navy text-white font-sans flex flex-col antialiased selection:bg-brand-orange selection:text-white">
@@ -1409,15 +1411,25 @@ export default function App() {
                       animate={{ opacity: 1, y: 0 }}
                       className="bg-card-bg p-6 rounded-3xl border border-zinc-900 space-y-4 shadow-md"
                     >
-                      <div className="border-b border-zinc-900 pb-3 mb-1">
-                        <span className="text-[10px] text-zinc-500 block uppercase font-mono tracking-widest">Store Order Summary</span>
-                        <h3 className="font-orbitron font-extrabold text-brand-orange text-md">
-                          {activeService.id === "usdt" ? (
-                            `USDT BUY/SELL TRANSACTION DESK`
-                          ) : (
-                            `${selectedPkg?.n}${quantity > 1 ? ` x${quantity}` : ""} — ${convertAndFormatPrice((dbPrices[activeService.id]?.[selectedPkg!.n.replace(/[.#$\[\]]/g, "_")] ?? selectedPkg!.p) * quantity)}`
-                          )}
-                        </h3>
+                      <div className="border-b border-zinc-900 pb-3 mb-1 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-zinc-500 block uppercase font-mono tracking-widest">Selected Item</span>
+                          <h3 className="font-orbitron font-extrabold text-white text-sm">
+                            {activeService.id === "usdt" ? (
+                              `USDT BUY/SELL TRANSACTION DESK`
+                            ) : (
+                              `${selectedPkg?.n}`
+                            )}
+                          </h3>
+                        </div>
+                        {activeService.id !== "usdt" && (
+                          <div className="text-right">
+                            <span className="text-[10px] text-zinc-500 block uppercase font-mono tracking-widest">Price</span>
+                            <span className="font-orbitron font-black text-brand-orange text-md block">
+                              {convertAndFormatPrice((dbPrices[activeService.id]?.[selectedPkg!.n.replace(/[.#$\[\]]/g, "_")] ?? selectedPkg!.p) * quantity)}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Quantity Selector (Only if not USDT) */}
@@ -1451,7 +1463,7 @@ export default function App() {
 
                       {/* Display Dynamic Fields */}
                       <div className="space-y-4 text-xs font-mono">
-                        {activeService.category === "voucher" ? (
+                        {isVoucher ? (
                           <div className="p-4 bg-zinc-950/45 border border-zinc-900/80 rounded-2xl text-center space-y-1">
                             <span className="text-emerald-500 font-orbitron font-extrabold tracking-wider uppercase text-[10px] block">⚡ Instant Delivery Voucher</span>
                             <p className="text-[11px] text-zinc-400">No ID/UID required. The voucher code will be loaded instantly to your account!</p>
