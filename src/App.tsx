@@ -105,6 +105,7 @@ export default function App() {
 
   // Category selection state
   const [selectedCategory, setSelectedCategory] = useState<string>("topup");
+  const [isCategoryInitialized, setIsCategoryInitialized] = useState<boolean>(false);
   const [dbCategories, setDbCategories] = useState<any[]>([
     { id: "topup", name: "Direct Top-up" },
     { id: "voucher", name: "Voucher Code" },
@@ -204,8 +205,38 @@ export default function App() {
           }).filter(Boolean);
         }
         setDbCategories(list);
-        if (list.some(c => c.id === "topup")) {
-          setSelectedCategory("topup");
+        if (!isCategoryInitialized) {
+          // Find topup category robustly (by ID or Name)
+          const topupCat = list.find(c => {
+            const id = (c.id || "").toLowerCase();
+            const name = (c.name || "").toLowerCase();
+            return (
+              name.includes("top-up") || 
+              name.includes("topup") || 
+              name.includes("direct top") ||
+              id === "topup" || 
+              id === "top_up" || 
+              id === "top-up"
+            );
+          });
+
+          if (topupCat) {
+            setSelectedCategory(topupCat.id);
+            setIsCategoryInitialized(true);
+          } else if (list.length > 0) {
+            // If no topup category found, default to the first one that doesn't contain "voucher"
+            const firstNonVoucher = list.find(c => {
+              const id = (c.id || "").toLowerCase();
+              const name = (c.name || "").toLowerCase();
+              return !id.includes("voucher") && !name.includes("voucher");
+            });
+            if (firstNonVoucher) {
+              setSelectedCategory(firstNonVoucher.id);
+            } else {
+              setSelectedCategory(list[0].id);
+            }
+            setIsCategoryInitialized(true);
+          }
         }
       }
     });
