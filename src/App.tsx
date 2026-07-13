@@ -851,13 +851,10 @@ export default function App() {
                     `🆔 *BNY Unique ID:* ${userData.uniqueId}\n\n` +
                     `📝 *Fulfillment Details:*\n${fieldsText}`;
 
-        const whatsappUrl = `https://wa.me/9779825880400?text=${encodeURIComponent(msg)}`;
-        window.open(whatsappUrl, "_blank");
-
         setSelectedPkg(null);
         setFieldsState({});
         setActiveSection("home");
-        alert("Order placed successfully! Redirecting to verification desk...");
+        alert("Order placed successfully! It is now pending fulfillment by the Admin Desk.");
       }
     } catch (err: any) {
       alert(err.message || "Failed to submit order");

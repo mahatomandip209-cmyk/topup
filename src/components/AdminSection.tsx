@@ -981,6 +981,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
       o.playerUid?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       o.packageName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       o.game?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      o.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       o.uniqueId?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const isMatchedFilter = orderFilter === "all" || o.status === orderFilter;
@@ -1413,134 +1414,157 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              {/* Left Column: Game Selector */}
-              <div className="lg:col-span-1 space-y-3">
-                <div className="bg-black/40 border border-zinc-900/80 rounded-3xl p-4">
-                  <h4 className="text-[10px] text-zinc-500 font-mono font-extrabold uppercase tracking-wider mb-3 px-1">Select Game</h4>
-                  <div className="flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 scrollbar-thin">
-                    {["all", ...Array.from(new Set(allOrders.map(o => o.game).filter(Boolean)))].map((gameName: any) => {
-                      const isActive = selectedGameFilter.toLowerCase() === gameName.toLowerCase();
-                      const gameCount = allOrders.filter(o => {
-                        const matchesGame = gameName === "all" || (o.game && o.game.toLowerCase() === gameName.toLowerCase());
-                        const matchesStatus = orderFilter === "all" || o.status === orderFilter;
-                        return matchesGame && matchesStatus;
-                      }).length;
-                      return (
-                        <button
-                          key={gameName}
-                          onClick={() => setSelectedGameFilter(gameName)}
-                          className={`flex-shrink-0 lg:w-full text-left px-3.5 py-2.5 rounded-xl text-[11px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-between gap-4 ${
-                            isActive
-                              ? "bg-red-600 text-white shadow-md shadow-red-500/20"
-                              : "text-zinc-400 hover:text-white hover:bg-zinc-900/40"
-                          }`}
-                        >
-                          <span className="truncate">{gameName === "all" ? "All Games" : gameName}</span>
-                          <span className="text-[9px] bg-black/40 text-zinc-500 px-2 py-0.5 rounded-md font-sans">
-                            {gameCount}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+            <div className="space-y-4">
+              {/* SEARCH */}
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-4.5 h-4.5" />
+                <input
+                  type="text"
+                  placeholder="Search orders by Player UID, email, game or package name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-black/50 border border-zinc-900 rounded-2xl px-12 py-3.5 text-xs font-mono placeholder-zinc-700 text-white focus:outline-none focus:border-red-500 transition-all shadow-inner"
+                />
               </div>
 
-              {/* Right Column: Search & Orders List */}
-              <div className="lg:col-span-3 space-y-4">
-                {/* SEARCH */}
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-4.5 h-4.5" />
-                  <input
-                    type="text"
-                    placeholder="Search orders by Player UID, email, game or package name..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-black/50 border border-zinc-900 rounded-2xl px-12 py-3.5 text-xs font-mono placeholder-zinc-700 text-white focus:outline-none focus:border-red-500 transition-all shadow-inner"
-                  />
-                </div>
-
-                {/* ORDERS SCROLLABLE GRID */}
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 no-scrollbar">
-                  {filteredOrders.length === 0 ? (
-                    <div className="text-center py-20 bg-black/20 border border-zinc-900/50 rounded-3xl">
-                      <p className="text-zinc-500 font-mono text-xs">No orders match the current filters.</p>
-                    </div>
-                  ) : (
-                    filteredOrders.map(order => (
-                      <div key={order.orderId} className="bg-[#0c1322] border border-zinc-900 hover:border-zinc-800 rounded-3xl p-6 space-y-4 transition-all duration-300 shadow-xl">
-                        <div className="flex justify-between items-start gap-4">
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="bg-red-500/10 border border-red-500/20 text-red-500 text-[8px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-wider">
-                                {order.game}
-                              </span>
-                              <strong className="text-white text-sm">{order.packageName}</strong>
-                            </div>
-                            <p className="text-[9px] text-zinc-500 font-mono mt-1.5">
-                              Date: {new Date(order.timestamp).toLocaleString()} &bull; Order ID: <span className="text-zinc-400 font-bold">{order.orderId.toUpperCase()}</span>
-                            </p>
-                            <p className="text-[11px] text-zinc-400 mt-0.5">User Email: <strong className="text-zinc-300 font-mono">{order.email}</strong></p>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <strong className="text-white font-mono text-base block">NPR {order.price}</strong>
-                            <span className={`inline-block text-[9px] font-bold uppercase font-mono px-2 py-0.5 rounded-full mt-1 ${
-                              order.status === "approved" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : order.status === "rejected" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse"
-                            }`}>
-                              {order.status === "approved" ? "completed" : order.status}
+              {/* ORDERS SCROLLABLE GRID */}
+              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 no-scrollbar">
+                {filteredOrders.length === 0 ? (
+                  <div className="text-center py-20 bg-black/20 border border-zinc-900/50 rounded-3xl">
+                    <p className="text-zinc-500 font-mono text-xs">No orders match the current filters.</p>
+                  </div>
+                ) : (
+                  filteredOrders.map(order => (
+                    <div key={order.orderId} className="bg-[#0c1322] border border-zinc-900 hover:border-zinc-800 rounded-3xl p-6 space-y-4 transition-all duration-300 shadow-xl">
+                      {/* Header Details */}
+                      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-wider">
+                              {order.game}
                             </span>
+                            <strong className="text-white text-base font-sans">{order.packageName}</strong>
                           </div>
+                          <p className="text-[10px] text-zinc-500 font-mono">
+                            Date: {new Date(order.timestamp).toLocaleString()} &bull; Order ID: <span className="text-zinc-400 font-bold select-all">{order.orderId.toUpperCase()}</span>
+                          </p>
                         </div>
-
-                        {/* Order Requirements details block */}
-                        <div className="bg-black/40 border border-zinc-900 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono text-zinc-400">
-                          {order.playerUid && (
-                            <div>
-                              <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Player UID</span>
-                              <strong className="text-red-500 text-sm tracking-widest">{order.playerUid}</strong>
-                            </div>
-                          )}
-                          {order.customerEmail && (
-                            <div>
-                              <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Customer Game Email</span>
-                              <strong className="text-white text-xs">{order.customerEmail}</strong>
-                            </div>
-                          )}
-                          {order.customerPassword && (
-                            <div>
-                              <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Activation Password</span>
-                              <strong className="text-white text-xs">{order.customerPassword}</strong>
-                            </div>
-                          )}
-                          {order.whatsappNumber && (
-                            <div>
-                              <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Contact WhatsApp</span>
-                              <strong className="text-white text-xs">{order.whatsappNumber}</strong>
-                            </div>
-                          )}
-                        </div>
-
-                        {order.status === "pending" && (
-                          <div className="flex gap-3 font-mono font-bold">
-                            <button
-                              onClick={() => rejectOrder(order)}
-                              className="flex-1 bg-red-950/20 hover:bg-red-900/30 border border-red-900/30 text-red-500 text-[11px] py-3 rounded-xl cursor-pointer uppercase tracking-wider transition-all"
-                            >
-                              REJECT ORDER
-                            </button>
-                            <button
-                              onClick={() => approveOrder(order)}
-                              className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-500 hover:to-red-600 text-[11px] py-3 rounded-xl cursor-pointer uppercase tracking-wider transition-all shadow-lg shadow-red-500/20"
-                            >
-                              DISPATCH DELIVERED
-                            </button>
+                        
+                        {/* Price & Quantity & Status badges */}
+                        <div className="text-left sm:text-right flex-shrink-0 space-y-1">
+                          <div className="text-zinc-500 text-[10px] uppercase tracking-wider font-extrabold font-mono">Total Price</div>
+                          <strong className="text-emerald-500 font-mono text-base block">NPR {order.price}</strong>
+                          <div className="text-zinc-400 font-mono text-[11px]">
+                            Qty: <span className="text-white font-bold">{order.quantity || 1}</span>
                           </div>
+                          <span className={`inline-block text-[9px] font-bold uppercase font-mono px-2 py-0.5 rounded-full mt-1 ${
+                            order.status === "approved" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : order.status === "rejected" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse"
+                          }`}>
+                            {order.status === "approved" ? "completed" : order.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Customer Email info */}
+                      <div className="border-t border-zinc-900/60 pt-3">
+                        <div className="text-zinc-500 text-[9px] uppercase tracking-wider font-extrabold font-mono">Gamer Account Email</div>
+                        <strong className="text-zinc-200 font-mono text-sm block mt-0.5 select-all">{order.email}</strong>
+                        {order.uniqueId && (
+                          <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                            BNY Unique ID: <span className="text-zinc-400 select-all font-bold">{order.uniqueId}</span>
+                          </p>
                         )}
                       </div>
-                    ))
-                  )}
-                </div>
+
+                      {/* Order Requirements details block */}
+                      <div className="bg-black/40 border border-zinc-900 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono text-zinc-400">
+                        {/* Standard UID / credentials fields */}
+                        {order.playerUid && (
+                          <div>
+                            <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Player UID</span>
+                            <strong className="text-red-500 text-sm tracking-widest select-all">{order.playerUid}</strong>
+                          </div>
+                        )}
+                        {order.customerEmail && (
+                          <div>
+                            <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Customer Game Email</span>
+                            <strong className="text-white text-xs select-all">{order.customerEmail}</strong>
+                          </div>
+                        )}
+                        {order.customerPassword && (
+                          <div>
+                            <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Activation Password</span>
+                            <strong className="text-white text-xs select-all">{order.customerPassword}</strong>
+                          </div>
+                        )}
+                        {order.whatsappNumber && (
+                          <div>
+                            <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Contact WhatsApp</span>
+                            <strong className="text-white text-xs select-all">{order.whatsappNumber}</strong>
+                          </div>
+                        )}
+
+                        {/* Render all other dynamic requirement keys */}
+                        {Object.keys(order)
+                          .filter(
+                            (key) =>
+                              ![
+                                "orderId",
+                                "userOrderId",
+                                "uid",
+                                "email",
+                                "uniqueId",
+                                "game",
+                                "packageName",
+                                "price",
+                                "quantity",
+                                "status",
+                                "timestamp",
+                                "voucher_codes",
+                                "playerUid",
+                                "customerEmail",
+                                "customerPassword",
+                                "whatsappNumber",
+                              ].includes(key)
+                          )
+                          .map((key) => {
+                            const val = order[key];
+                            if (val === undefined || val === null || val === "") return null;
+                            const displayKey = key
+                              .replace(/_/g, " ")
+                              .replace(/\b\w/g, (char) => char.toUpperCase());
+                            return (
+                              <div key={key}>
+                                <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">
+                                  {displayKey}
+                                </span>
+                                <strong className="text-white text-xs select-all">
+                                  {typeof val === "object" ? JSON.stringify(val) : String(val)}
+                                </strong>
+                              </div>
+                            );
+                          })}
+                      </div>
+
+                      {order.status === "pending" && (
+                        <div className="flex gap-3 font-mono font-bold">
+                          <button
+                            onClick={() => rejectOrder(order)}
+                            className="flex-1 bg-red-950/20 hover:bg-red-900/30 border border-red-900/30 text-red-500 text-[11px] py-3 rounded-xl cursor-pointer uppercase tracking-wider transition-all"
+                          >
+                            REJECT ORDER
+                          </button>
+                          <button
+                            onClick={() => approveOrder(order)}
+                            className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-500 hover:to-red-600 text-[11px] py-3 rounded-xl cursor-pointer uppercase tracking-wider transition-all shadow-lg shadow-red-500/20"
+                          >
+                            DISPATCH DELIVERED
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -2184,7 +2208,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                               <div className="flex items-center gap-2">
                                 <strong className="text-white text-sm">{game.name}</strong>
                                 <span className="bg-zinc-900 border border-zinc-800 text-zinc-500 text-[8px] font-mono px-2 py-0.5 rounded-full uppercase">
-                                  {game.category}
+                                  {dbCategories.find(c => c.id === game.category)?.name || game.category || "topup"}
                                 </span>
                               </div>
                               <p className="text-[10px] text-zinc-500 font-mono mt-0.5 max-w-xs">{game.description}</p>
@@ -2273,7 +2297,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                         />
                         <div className="space-y-1 min-w-0 flex-1">
                           <span className="text-[8px] bg-red-600/10 text-red-500 border border-red-950/30 px-2 py-0.5 rounded-full font-mono uppercase font-extrabold">
-                            {game.category || "topup"}
+                            {dbCategories.find(c => c.id === game.category)?.name || game.category || "topup"}
                           </span>
                           <h4 className="text-white font-sans font-extrabold text-base truncate group-hover:text-red-500 transition-colors">{game.name}</h4>
                           <p className="text-[10px] text-zinc-500 font-mono">
@@ -2663,7 +2687,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                             <div>
                               <strong className="text-white text-sm group-hover:text-red-500 transition-colors block">{game.name}</strong>
                               <span className="bg-zinc-900/60 border border-zinc-900 text-zinc-400 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded uppercase">
-                                {game.category || "topup"}
+                                {dbCategories.find(c => c.id === game.category)?.name || game.category || "topup"}
                               </span>
                             </div>
                           </div>
