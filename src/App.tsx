@@ -204,6 +204,9 @@ export default function App() {
           }).filter(Boolean);
         }
         setDbCategories(list);
+        if (list.some(c => c.id === "topup")) {
+          setSelectedCategory("topup");
+        }
       }
     });
 
