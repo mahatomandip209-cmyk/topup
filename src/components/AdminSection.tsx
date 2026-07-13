@@ -1646,6 +1646,53 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                           })}
                       </div>
 
+                      {/* Voucher Codes Section */}
+                      {order.voucher_codes && order.voucher_codes.length > 0 && (
+                        <div className="bg-red-950/10 border border-red-500/20 rounded-2xl p-4 space-y-3">
+                          <div className="flex justify-between items-center border-b border-zinc-900/40 pb-2">
+                            <span className="text-red-400 font-orbitron font-extrabold text-[10px] uppercase tracking-wider flex items-center gap-1.5">
+                              🎟️ Assigned Voucher Codes ({order.voucher_codes.length})
+                            </span>
+                            <button
+                              onClick={() => {
+                                const allCodesStr = order.voucher_codes.join("\n");
+                                navigator.clipboard.writeText(allCodesStr);
+                                alert("All voucher codes copied to clipboard!");
+                              }}
+                              className="text-[10px] bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 font-bold px-2.5 py-1.5 rounded-xl cursor-pointer transition-colors flex items-center gap-1 font-sans"
+                              title="Copy All Codes"
+                            >
+                              <Copy className="w-3 h-3" /> Copy All
+                            </button>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono text-zinc-400">
+                            {order.voucher_codes.map((code: string, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between gap-2 bg-black/40 border border-zinc-900/60 rounded-xl p-2.5">
+                                <div className="min-w-0">
+                                  <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">
+                                    Code #{idx + 1}
+                                  </span>
+                                  <strong className="text-white text-xs select-all block truncate font-mono tracking-wider">
+                                    {code}
+                                  </strong>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(code);
+                                    alert(`Copied Voucher Code: ${code}`);
+                                  }}
+                                  className="text-zinc-500 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-zinc-900 cursor-pointer flex-shrink-0"
+                                  title="Copy Code"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {order.status === "pending" && (
                         <div className="flex gap-3 font-mono font-bold">
                           <button
@@ -1658,7 +1705,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                             onClick={() => approveOrder(order)}
                             className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-500 hover:to-red-600 text-[11px] py-3 rounded-xl cursor-pointer uppercase tracking-wider transition-all shadow-lg shadow-red-500/20"
                           >
-                            DISPATCH DELIVERED
+                            COMPLETE ORDER
                           </button>
                         </div>
                       )}
@@ -3152,7 +3199,10 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                 const handleDeleteCode = async (codeId: string) => {
                   if (await confirmAction("Are you sure you want to delete this voucher code?")) {
                     try {
-                      await remove(ref(db, `games/${selectedVoucherGameId}/voucher_codes/${codeId}`));
+                      const updatedVoucherCodes = { ...rawCodes };
+                      delete updatedVoucherCodes[codeId];
+                      const updatedGame = { ...gameObj, voucher_codes: updatedVoucherCodes };
+                      await set(ref(db, `games/${selectedVoucherGameId}`), updatedGame);
                       alert("Voucher code deleted.");
                     } catch (err: any) {
                       alert("Error deleting: " + err.message);

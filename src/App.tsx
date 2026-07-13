@@ -291,6 +291,7 @@ export default function App() {
     if (typeof window !== "undefined" && (window.location.pathname === "/admin" || window.location.pathname.endsWith("/admin") || window.location.href.includes("/admin"))) {
       setActiveSection("admin");
     }
+    setSelectedCategory("topup");
   }, []);
 
   // Set up custom glowing alert and confirm dialogue overrides
@@ -725,14 +726,12 @@ export default function App() {
       finalPackageName = quantity > 1 ? `${selectedPkg.n} (Qty: ${quantity})` : selectedPkg.n;
 
       // Validate dynamic fields based on configurations
-      if (!isVoucher) {
-        const fieldsToValidate = activeService.fields || [];
+      const fieldsToValidate = activeService.fields || [];
 
-        for (const f of fieldsToValidate) {
-          if (!fieldsState[f.key]) {
-            alert(`Please enter a valid ${f.label}`);
-            return;
-          }
+      for (const f of fieldsToValidate) {
+        if (!fieldsState[f.key]) {
+          alert(`Please enter a valid ${f.label}`);
+          return;
         }
       }
     }
@@ -819,7 +818,8 @@ export default function App() {
         quantity: activeService.id === "usdt" ? 1 : quantity,
         status: isVoucher ? "approved" : "pending",
         timestamp: Date.now(),
-        ...(isVoucher ? { voucher_codes: assignedVouchers.map(v => v.code) } : fieldsState)
+        ...fieldsState,
+        ...(isVoucher ? { voucher_codes: assignedVouchers.map(v => v.code) } : {})
       };
 
       const updates: any = {};
