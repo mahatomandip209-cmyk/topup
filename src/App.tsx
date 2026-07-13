@@ -752,7 +752,12 @@ export default function App() {
     let updatedVoucherCodesMap: any = null;
     
     // Generate order IDs early so we have them for the voucher markers and the payloads
-    const orderId = push(ref(db, "all_orders")).key || "";
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let randSuffix = "";
+    for (let i = 0; i < 8; i++) {
+      randSuffix += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const orderId = `BNY-${randSuffix}`;
     const userOrderId = orderId;
 
     if (isVoucher) {
@@ -1941,7 +1946,7 @@ export default function App() {
                   Order Completed Successfully
                 </h3>
                 <p className="text-[11px] text-zinc-500 font-mono">
-                  Receipt Ref: ORD-{voucherSuccessModal.orderId.slice(0, 8).toUpperCase()}
+                  Receipt Ref: {voucherSuccessModal.orderId}
                 </p>
               </div>
 

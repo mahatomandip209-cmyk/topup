@@ -125,7 +125,15 @@ export default function HistorySection({
             </div>
           ) : (
             userOrders.map((order) => {
-              const trackingId = `ORD-${(order.orderId || order.id || "").slice(0, 8).toUpperCase()}`;
+              const getDisplayOrderId = (o: any) => {
+                if (o.orderId && o.orderId.startsWith("BNY-")) {
+                  return o.orderId;
+                }
+                const cleanId = (o.orderId || o.id || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+                const suffix = cleanId.slice(0, 8).padEnd(8, "X");
+                return `BNY-${suffix}`;
+              };
+              const trackingId = getDisplayOrderId(order);
               const isVoucher = order.category === "voucher_code" || (order.voucher_codes && order.voucher_codes.length > 0);
 
               return (
@@ -133,25 +141,9 @@ export default function HistorySection({
                   key={order.id}
                   className="bg-white border border-zinc-200/80 rounded-3xl p-5 space-y-4 shadow-sm hover:shadow-md transition-all duration-300 text-zinc-950"
                 >
-                  {/* Top Section: Order ID, Game Name, Product Name, Qty & Status Pill */}
+                  {/* Top Section: Game Name, Product Name, Qty & Status Pill / Order ID on Right */}
                   <div className="flex justify-between items-start gap-4">
                     <div className="space-y-1 min-w-0">
-                      {/* Order ID with Copy button */}
-                      <div className="font-mono text-[11px] font-extrabold text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
-                        <span>{trackingId}</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigator.clipboard.writeText(trackingId);
-                            alert(`Copied Order ID: ${trackingId}`);
-                          }}
-                          className="text-zinc-400 hover:text-blue-600 transition-colors cursor-pointer p-0.5 rounded hover:bg-zinc-100 inline-flex items-center justify-center"
-                          title="Copy Order ID"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
                       {/* Game Name */}
                       <h4 className="font-sans font-bold text-xs text-blue-600 tracking-wide uppercase">
                         {order.game}
@@ -168,8 +160,8 @@ export default function HistorySection({
                       </p>
                     </div>
 
-                    {/* Status Pill on Top Right */}
-                    <div className="flex-shrink-0">
+                    {/* Status Pill & Order ID on Top Right */}
+                    <div className="flex flex-col items-end gap-2 shrink-0">
                       {order.status === "approved" ? (
                         <span className="inline-flex items-center justify-center px-4 py-1.5 text-[10px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full tracking-wider uppercase">
                           COMPLETED
@@ -183,6 +175,22 @@ export default function HistorySection({
                           PENDING
                         </span>
                       )}
+
+                      {/* Order ID with Copy button */}
+                      <div className="font-mono text-[11px] font-extrabold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5 bg-zinc-50 border border-zinc-200/60 px-2.5 py-1 rounded-lg">
+                        <span>{trackingId}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(trackingId);
+                            alert(`Copied Order ID: ${trackingId}`);
+                          }}
+                          className="text-zinc-400 hover:text-red-500 transition-colors cursor-pointer p-0.5 rounded hover:bg-zinc-200 inline-flex items-center justify-center"
+                          title="Copy Order ID"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -245,6 +253,8 @@ export default function HistorySection({
                         "orderId",
                         "userOrderId",
                         "userId",
+                        "uid",
+                        "uniqueId",
                         "userName",
                         "userEmail",
                         "game",

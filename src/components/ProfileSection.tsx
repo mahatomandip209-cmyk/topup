@@ -100,7 +100,15 @@ export default function ProfileSection({
 
   // Helper to trigger support message setup for a specific order inquiry
   const handleOrderInquiry = (order: any) => {
-    const trackingId = `ORD-${(order.orderId || order.id || "").slice(0, 8).toUpperCase()}`;
+    const getDisplayOrderId = (o: any) => {
+      if (o.orderId && o.orderId.startsWith("BNY-")) {
+        return o.orderId;
+      }
+      const cleanId = (o.orderId || o.id || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+      const suffix = cleanId.slice(0, 8).padEnd(8, "X");
+      return `BNY-${suffix}`;
+    };
+    const trackingId = getDisplayOrderId(order);
     setSupportTopic(`Inquiry about ${order.game} Order ${trackingId}`);
     setSupportMessage(
       `Hello team, I have a question regarding my order of ${order.packageName} for game ${order.game}.\nOrder ID: ${trackingId}\nPlayer UID: ${order.playerUid}\nPrice: RS ${order.price}\nStatus: ${order.status.toUpperCase()}`

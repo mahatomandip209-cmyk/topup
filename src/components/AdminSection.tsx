@@ -1449,19 +1449,33 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                             <span>Date: {new Date(order.timestamp).toLocaleString()}</span>
                             <span>&bull;</span>
                             <span>Order ID:</span>
-                            <span className="text-zinc-400 font-bold">{`ORD-${(order.orderId || order.id || "").slice(0, 8).toUpperCase()}`}</span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const oid = `ORD-${(order.orderId || order.id || "").slice(0, 8).toUpperCase()}`;
-                                navigator.clipboard.writeText(oid);
-                                alert(`Copied Order ID: ${oid}`);
-                              }}
-                              className="text-zinc-500 hover:text-red-500 transition-colors cursor-pointer p-1 rounded hover:bg-zinc-900 inline-flex items-center justify-center"
-                              title="Copy Order ID"
-                            >
-                              <Copy className="w-3.5 h-3.5" />
-                            </button>
+                            {(() => {
+                              const getDisplayOrderId = (o: any) => {
+                                if (o.orderId && o.orderId.startsWith("BNY-")) {
+                                  return o.orderId;
+                                }
+                                const cleanId = (o.orderId || o.id || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+                                const suffix = cleanId.slice(0, 8).padEnd(8, "X");
+                                return `BNY-${suffix}`;
+                              };
+                              const oid = getDisplayOrderId(order);
+                              return (
+                                <>
+                                  <span className="text-zinc-400 font-bold">{oid}</span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigator.clipboard.writeText(oid);
+                                      alert(`Copied Order ID: ${oid}`);
+                                    }}
+                                    className="text-zinc-500 hover:text-red-500 transition-colors cursor-pointer p-1 rounded hover:bg-zinc-900 inline-flex items-center justify-center"
+                                    title="Copy Order ID"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                         
