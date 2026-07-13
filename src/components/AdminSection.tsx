@@ -217,7 +217,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
         let list: any[] = [];
         if (Array.isArray(data)) {
           list = data.map((game, idx) => {
-            if (!game) return null;
+            if (!game || !game.name) return null;
             return {
               ...game,
               id: game.id || String(idx),
@@ -227,7 +227,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
         } else if (typeof data === "object") {
           list = Object.keys(data).map(key => {
             const game = data[key];
-            if (!game) return null;
+            if (!game || !game.name) return null;
             return {
               ...game,
               id: game.id || key,

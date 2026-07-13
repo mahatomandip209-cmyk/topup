@@ -141,7 +141,7 @@ export default function App() {
         let list: any[] = [];
         if (Array.isArray(data)) {
           list = data.map((game, idx) => {
-            if (!game) return null;
+            if (!game || !game.name) return null;
             return {
               ...game,
               id: game.id || String(idx),
@@ -151,7 +151,7 @@ export default function App() {
         } else if (typeof data === "object") {
           list = Object.keys(data).map(key => {
             const game = data[key];
-            if (!game) return null;
+            if (!game || !game.name) return null;
             return {
               ...game,
               id: game.id || key,
@@ -822,9 +822,7 @@ export default function App() {
       updates[`orders/${currentUser.uid}/${userOrderId}`] = orderPayload;
 
       if (isVoucher && updatedVoucherCodesMap) {
-        updates[`games/${activeService.id}`] = {
-          voucher_codes: updatedVoucherCodesMap
-        };
+        updates[`games/${activeService.id}/voucher_codes`] = updatedVoucherCodesMap;
       }
 
       await update(ref(db), updates);
