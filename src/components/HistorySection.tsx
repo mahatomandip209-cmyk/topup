@@ -125,7 +125,7 @@ export default function HistorySection({
             </div>
           ) : (
             userOrders.map((order) => {
-              const trackingId = `GAM-${order.id.slice(0, 6).toUpperCase()}`;
+              const trackingId = `ORD-${(order.orderId || order.id || "").slice(0, 8).toUpperCase()}`;
               const isVoucher = order.category === "voucher_code" || (order.voucher_codes && order.voucher_codes.length > 0);
 
               return (

@@ -753,7 +753,7 @@ export default function App() {
     
     // Generate order IDs early so we have them for the voucher markers and the payloads
     const orderId = push(ref(db, "all_orders")).key || "";
-    const userOrderId = push(ref(db, `orders/${currentUser.uid}`)).key || "";
+    const userOrderId = orderId;
 
     if (isVoucher) {
       setLoading(true);
@@ -847,8 +847,7 @@ export default function App() {
                     `💎 *Item:* ${finalPackageName}\n` +
                     `💰 *Price:* NPR ${finalPriceNPR} (${convertAndFormatPrice(finalPriceNPR)})\n` +
                     `👤 *User Name:* ${userData.name}\n` +
-                    `📧 *User Email:* ${currentUser.email}\n` +
-                    `🆔 *BNY Unique ID:* ${userData.uniqueId}\n\n` +
+                    `📧 *User Email:* ${currentUser.email}\n\n` +
                     `📝 *Fulfillment Details:*\n${fieldsText}`;
 
         setSelectedPkg(null);
@@ -913,7 +912,6 @@ export default function App() {
       });
 
       const msg = `🚀 *BNY SHOP DEPOSIT PROOF* 🚀\n\n` +
-                  `🆔 *BNY ID:* ${userData.uniqueId}\n` +
                   `👤 *Member Name:* ${userData.name}\n` +
                   `📧 *Member Email:* ${currentUser.email}\n` +
                   `💳 *Method:* ESEWA\n` +

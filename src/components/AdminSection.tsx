@@ -1445,9 +1445,24 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                             </span>
                             <strong className="text-white text-base font-sans">{order.packageName}</strong>
                           </div>
-                          <p className="text-[10px] text-zinc-500 font-mono">
-                            Date: {new Date(order.timestamp).toLocaleString()} &bull; Order ID: <span className="text-zinc-400 font-bold select-all">{order.orderId.toUpperCase()}</span>
-                          </p>
+                          <div className="text-[10px] text-zinc-500 font-mono flex items-center gap-1.5 flex-wrap">
+                            <span>Date: {new Date(order.timestamp).toLocaleString()}</span>
+                            <span>&bull;</span>
+                            <span>Order ID:</span>
+                            <span className="text-zinc-400 font-bold">{`ORD-${(order.orderId || order.id || "").slice(0, 8).toUpperCase()}`}</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const oid = `ORD-${(order.orderId || order.id || "").slice(0, 8).toUpperCase()}`;
+                                navigator.clipboard.writeText(oid);
+                                alert(`Copied Order ID: ${oid}`);
+                              }}
+                              className="text-zinc-500 hover:text-red-500 transition-colors cursor-pointer p-1 rounded hover:bg-zinc-900 inline-flex items-center justify-center"
+                              title="Copy Order ID"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                         
                         {/* Price & Quantity & Status badges */}
@@ -1469,38 +1484,81 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                       <div className="border-t border-zinc-900/60 pt-3">
                         <div className="text-zinc-500 text-[9px] uppercase tracking-wider font-extrabold font-mono">Gamer Account Email</div>
                         <strong className="text-zinc-200 font-mono text-sm block mt-0.5 select-all">{order.email}</strong>
-                        {order.uniqueId && (
-                          <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
-                            BNY Unique ID: <span className="text-zinc-400 select-all font-bold">{order.uniqueId}</span>
-                          </p>
-                        )}
                       </div>
 
                       {/* Order Requirements details block */}
-                      <div className="bg-black/40 border border-zinc-900 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono text-zinc-400">
+                      <div className="bg-black/20 border border-zinc-900/80 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono text-zinc-400">
                         {/* Standard UID / credentials fields */}
                         {order.playerUid && (
-                          <div>
-                            <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Player UID</span>
-                            <strong className="text-red-500 text-sm tracking-widest select-all">{order.playerUid}</strong>
+                          <div className="flex items-center justify-between gap-2 bg-black/40 border border-zinc-900/60 rounded-xl p-2.5">
+                            <div className="min-w-0">
+                              <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Player UID</span>
+                              <strong className="text-red-500 text-xs tracking-wider select-all block truncate">{order.playerUid}</strong>
+                            </div>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(order.playerUid);
+                                alert(`Copied Player UID: ${order.playerUid}`);
+                              }}
+                              className="text-zinc-500 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-zinc-900 cursor-pointer flex-shrink-0"
+                              title="Copy Player UID"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         )}
                         {order.customerEmail && (
-                          <div>
-                            <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Customer Game Email</span>
-                            <strong className="text-white text-xs select-all">{order.customerEmail}</strong>
+                          <div className="flex items-center justify-between gap-2 bg-black/40 border border-zinc-900/60 rounded-xl p-2.5">
+                            <div className="min-w-0">
+                              <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Customer Game Email</span>
+                              <strong className="text-white text-xs select-all block truncate">{order.customerEmail}</strong>
+                            </div>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(order.customerEmail);
+                                alert(`Copied Customer Game Email: ${order.customerEmail}`);
+                              }}
+                              className="text-zinc-500 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-zinc-900 cursor-pointer flex-shrink-0"
+                              title="Copy Customer Game Email"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         )}
                         {order.customerPassword && (
-                          <div>
-                            <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Activation Password</span>
-                            <strong className="text-white text-xs select-all">{order.customerPassword}</strong>
+                          <div className="flex items-center justify-between gap-2 bg-black/40 border border-zinc-900/60 rounded-xl p-2.5">
+                            <div className="min-w-0">
+                              <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Activation Password</span>
+                              <strong className="text-white text-xs select-all block truncate">{order.customerPassword}</strong>
+                            </div>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(order.customerPassword);
+                                alert(`Copied Activation Password: ${order.customerPassword}`);
+                              }}
+                              className="text-zinc-500 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-zinc-900 cursor-pointer flex-shrink-0"
+                              title="Copy Activation Password"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         )}
                         {order.whatsappNumber && (
-                          <div>
-                            <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Contact WhatsApp</span>
-                            <strong className="text-white text-xs select-all">{order.whatsappNumber}</strong>
+                          <div className="flex items-center justify-between gap-2 bg-black/40 border border-zinc-900/60 rounded-xl p-2.5">
+                            <div className="min-w-0">
+                              <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Contact WhatsApp</span>
+                              <strong className="text-white text-xs select-all block truncate">{order.whatsappNumber}</strong>
+                            </div>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(order.whatsappNumber);
+                                alert(`Copied Contact WhatsApp: ${order.whatsappNumber}`);
+                              }}
+                              className="text-zinc-500 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-zinc-900 cursor-pointer flex-shrink-0"
+                              title="Copy Contact WhatsApp"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         )}
 
@@ -1533,14 +1591,27 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                             const displayKey = key
                               .replace(/_/g, " ")
                               .replace(/\b\w/g, (char) => char.toUpperCase());
+                            const strVal = typeof val === "object" ? JSON.stringify(val) : String(val);
                             return (
-                              <div key={key}>
-                                <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">
-                                  {displayKey}
-                                </span>
-                                <strong className="text-white text-xs select-all">
-                                  {typeof val === "object" ? JSON.stringify(val) : String(val)}
-                                </strong>
+                              <div key={key} className="flex items-center justify-between gap-2 bg-black/40 border border-zinc-900/60 rounded-xl p-2.5">
+                                <div className="min-w-0">
+                                  <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">
+                                    {displayKey}
+                                  </span>
+                                  <strong className="text-white text-xs select-all block truncate">
+                                    {strVal}
+                                  </strong>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(strVal);
+                                    alert(`Copied ${displayKey}: ${strVal}`);
+                                  }}
+                                  className="text-zinc-500 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-zinc-900 cursor-pointer flex-shrink-0"
+                                  title={`Copy ${displayKey}`}
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                </button>
                               </div>
                             );
                           })}
@@ -1722,9 +1793,6 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[10px] text-zinc-500 font-mono font-bold uppercase">Name:</span>
                           <strong className="text-white text-sm truncate">{u.name}</strong>
-                          <span className="text-[9px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-mono font-bold tracking-wider">
-                            {u.uniqueId || "N/A"}
-                          </span>
                         </div>
                         <div className="flex items-center gap-1 text-xs text-zinc-400 font-mono">
                           <span className="text-[10px] text-zinc-500 font-mono font-bold uppercase">Email:</span>

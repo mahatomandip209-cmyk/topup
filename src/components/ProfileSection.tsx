@@ -100,7 +100,7 @@ export default function ProfileSection({
 
   // Helper to trigger support message setup for a specific order inquiry
   const handleOrderInquiry = (order: any) => {
-    const trackingId = `ORD-${order.id.slice(0, 8).toUpperCase()}`;
+    const trackingId = `ORD-${(order.orderId || order.id || "").slice(0, 8).toUpperCase()}`;
     setSupportTopic(`Inquiry about ${order.game} Order ${trackingId}`);
     setSupportMessage(
       `Hello team, I have a question regarding my order of ${order.packageName} for game ${order.game}.\nOrder ID: ${trackingId}\nPlayer UID: ${order.playerUid}\nPrice: RS ${order.price}\nStatus: ${order.status.toUpperCase()}`
@@ -454,20 +454,6 @@ export default function ProfileSection({
                       <span className="text-[10px] text-zinc-500 font-bold block uppercase">Gateway Link</span>
                       <span className="text-emerald-500 font-bold tracking-wider">ACTIVE</span>
                     </div>
-                  </div>
-
-                  <div className="bg-black border border-zinc-900 rounded-xl p-3 flex justify-between items-center text-xs font-mono">
-                    <div className="space-y-1">
-                      <span className="text-[9px] text-zinc-500 font-bold block uppercase">Unique Player ID</span>
-                      <span className="text-red-500 font-extrabold tracking-wider">{userData?.uniqueId ?? "PLAYER-UID"}</span>
-                    </div>
-                    <button
-                      onClick={() => copyToClipboard(userData?.uniqueId || "", "ID")}
-                      className="bg-red-950/20 hover:bg-red-900/30 p-2 rounded-lg text-red-500 cursor-pointer transition-colors border border-red-900/30"
-                      title="Copy Unique ID"
-                    >
-                      {copiedId ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                    </button>
                   </div>
                 </div>
 
