@@ -1017,7 +1017,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
           {adminTab !== "games" && adminTab !== "categories" ? (
             <div>
               <h2 className="font-orbitron font-extrabold text-lg text-white tracking-wider uppercase flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-red-500" /> BNY Desk
+                <ShieldCheck className="w-5 h-5 text-red-500" /> Dashboard
               </h2>
               <p className="text-[10px] text-zinc-500 font-mono tracking-wider uppercase">
                 {adminTab === "dashboard" && "Dashboard Overview"}
@@ -1112,9 +1112,8 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
 
                 <div className="space-y-1.5">
                   {[
-                    { id: "dashboard", label: "BNY Desk", icon: TrendingUp },
+                    { id: "dashboard", label: "Dashboard", icon: TrendingUp },
                     { id: "orders", label: `Fulfill Orders (${pendingOrdersCount})`, icon: ClipboardList },
-                    { id: "deposits", label: `Deposits (${pendingDepositsCount})`, icon: Wallet },
                     { id: "users", label: `User Balances (${allUsers.length})`, icon: Users },
                     { id: "categories", label: `Categories (${dbCategories.length})`, icon: Tags },
                     { id: "games", label: "Games", icon: Database },
@@ -1262,6 +1261,122 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                   <p className="text-2xl font-black font-mono text-purple-400 tracking-tight">{allUsers.length}</p>
                   <span className="text-[8px] text-zinc-500 block font-mono uppercase font-bold mt-1">Gamer userbase</span>
                 </div>
+              </div>
+            </div>
+
+            {/* DEPOSITS LIST ON THE DASHBOARD (DEPOSITS DASHBOARD MA MATRA) */}
+            <div className="border-t border-zinc-900/80 pt-8 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <h3 className="font-orbitron font-extrabold text-md uppercase tracking-widest text-white flex items-center gap-2">
+                  <Wallet className="w-5 h-5 text-blue-500" /> Load Deposits
+                </h3>
+
+                {/* DEPOSIT FILTER BAR */}
+                <div className="flex bg-black/40 border border-zinc-900 p-1 rounded-2xl gap-1 text-[9px] font-mono font-bold uppercase tracking-wider">
+                  {[
+                    { id: "pending", label: `Pending (${pendingDepositsCount})` },
+                    { id: "approved", label: "Completed" },
+                    { id: "rejected", label: "Rejected" }
+                  ].map(sub => (
+                    <button
+                      key={sub.id}
+                      onClick={() => setDepositFilter(sub.id as any)}
+                      className={`px-3 py-2 rounded-xl cursor-pointer transition-all ${
+                        depositFilter === sub.id
+                          ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                          : "text-zinc-500 hover:text-zinc-300"
+                      }`}
+                    >
+                      {sub.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* SEARCH */}
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-4.5 h-4.5" />
+                <input
+                  type="text"
+                  placeholder="Search deposits by Trx Code, Sender name, phone, or email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-black/50 border border-zinc-900 rounded-2xl px-12 py-3.5 text-xs font-mono placeholder-zinc-700 text-white focus:outline-none focus:border-blue-500 transition-all shadow-inner"
+                />
+              </div>
+
+              {/* DEPOSITS SCROLLABLE GRID */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-h-[700px] overflow-y-auto pr-2 no-scrollbar">
+                {filteredDeposits.length === 0 ? (
+                  <div className="col-span-full text-center py-20 bg-black/20 border border-zinc-900/50 rounded-3xl">
+                    <p className="text-zinc-500 font-mono text-xs">No deposits match current filter.</p>
+                  </div>
+                ) : (
+                  filteredDeposits.map(dep => (
+                    <div key={dep.depositId} className="bg-[#0c1322] border border-zinc-900 hover:border-zinc-800 rounded-3xl p-6 space-y-4 transition-all duration-300 shadow-xl flex flex-col justify-between">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-start gap-4">
+                          <div>
+                            <span className="text-zinc-500 text-[10px] uppercase tracking-wider font-extrabold block">Gamer Email</span>
+                            <strong className="text-white text-xs sm:text-sm font-mono block mt-0.5 select-all">{dep.email}</strong>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <span className="text-zinc-500 text-[10px] uppercase tracking-wider font-extrabold block">Amount</span>
+                            <strong className="text-emerald-500 font-mono text-sm sm:text-base block mt-0.5">NPR {dep.amount}</strong>
+                          </div>
+                        </div>
+
+                        {dep.proofImage && (
+                          <div className="bg-black/40 border border-zinc-900/60 p-4 rounded-2xl space-y-2">
+                            <span className="text-zinc-500 block text-[9px] uppercase tracking-wider font-extrabold font-mono">Receipt Screenshot</span>
+                            <div
+                              onClick={() => setPreviewImage(dep.proofImage)}
+                              className="relative group overflow-hidden rounded-xl border border-zinc-800/80 cursor-pointer bg-black/60 flex items-center justify-center p-2"
+                            >
+                              <img
+                                src={dep.proofImage}
+                                alt="deposit proof slip"
+                                className="max-h-48 object-contain rounded-lg transition-transform duration-300 group-hover:scale-[1.02]"
+                              />
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1.5 rounded-lg">
+                                <span className="text-xl">🔍</span>
+                                <span className="font-mono text-[9px] uppercase tracking-wider font-bold">Open Screenshot</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between pt-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-zinc-500 text-[9px] uppercase tracking-wider font-extrabold font-mono">Status:</span>
+                            <span className={`inline-block text-[9px] font-bold uppercase font-mono px-2 py-0.5 rounded-full ${
+                              dep.status === "approved" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : dep.status === "rejected" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse"
+                            }`}>
+                              {dep.status === "approved" ? "completed" : dep.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {dep.status === "pending" && (
+                        <div className="flex gap-3 font-mono font-bold pt-4 border-t border-zinc-900/40 mt-2">
+                          <button
+                            onClick={() => rejectDeposit(dep)}
+                            className="flex-1 bg-red-950/20 hover:bg-red-900/30 border border-red-900/30 text-red-500 text-[11px] py-3 rounded-xl cursor-pointer uppercase tracking-wider transition-all"
+                          >
+                            DECLINE
+                          </button>
+                          <button
+                            onClick={() => approveDeposit(dep)}
+                            className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-500 hover:to-blue-600 text-[11px] py-3 rounded-xl cursor-pointer uppercase tracking-wider transition-all shadow-lg shadow-blue-500/20"
+                          >
+                            CONFIRM
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
