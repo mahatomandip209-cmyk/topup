@@ -96,6 +96,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
   const [orderFilter, setOrderFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
   const [depositFilter, setDepositFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
   const [selectedGameFilter, setSelectedGameFilter] = useState<string>("all");
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Sub-navigation inside Dashboard (to toggle users, orders, deposits lists)
   const [dashboardSubTab, setDashboardSubTab] = useState<"orders" | "deposits" | "users" | "banners">("orders");
@@ -1479,20 +1480,43 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                 </div>
               ) : (
                 filteredDeposits.map(dep => {
-                  const matchedUser = allUsers.find(u => u.uid === dep.uid);
                   return (
                     <div key={dep.depositId} className="bg-[#0c1322] border border-zinc-900 hover:border-zinc-800 rounded-3xl p-6 space-y-4 transition-all duration-300 shadow-xl">
                       <div className="flex justify-between items-start gap-4">
                         <div>
-                          <span className="bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[8px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-wider">
-                            eSewa / Khalti Load
-                          </span>
-                          <p className="text-[9px] text-zinc-500 font-mono mt-1.5">{new Date(dep.timestamp).toLocaleString()}</p>
-                          <p className="text-[11px] text-zinc-400 mt-1">User Email: <strong className="text-zinc-300 font-mono">{dep.email}</strong></p>
+                          <span className="text-zinc-500 text-[10px] uppercase tracking-wider font-extrabold block">Gamer Email</span>
+                          <strong className="text-white text-xs sm:text-sm font-mono block mt-0.5 select-all">{dep.email}</strong>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <strong className="text-emerald-500 font-mono text-base block">NPR {dep.amount}</strong>
-                          <span className={`inline-block text-[9px] font-bold uppercase font-mono px-2 py-0.5 rounded-full mt-1 ${
+                          <span className="text-zinc-500 text-[10px] uppercase tracking-wider font-extrabold block">Amount</span>
+                          <strong className="text-emerald-500 font-mono text-sm sm:text-base block mt-0.5">NPR {dep.amount}</strong>
+                        </div>
+                      </div>
+
+                      {dep.proofImage && (
+                        <div className="bg-black/40 border border-zinc-900/60 p-4 rounded-2xl space-y-2">
+                          <span className="text-zinc-500 block text-[9px] uppercase tracking-wider font-extrabold font-mono">Receipt Screenshot (Click to View Full Size)</span>
+                          <div
+                            onClick={() => setPreviewImage(dep.proofImage)}
+                            className="relative group overflow-hidden rounded-xl border border-zinc-800/80 cursor-pointer bg-black/60 flex items-center justify-center p-2"
+                          >
+                            <img
+                              src={dep.proofImage}
+                              alt="deposit proof slip"
+                              className="max-h-48 object-contain rounded-lg transition-transform duration-300 group-hover:scale-[1.02]"
+                            />
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1.5 rounded-lg">
+                              <span className="text-xl">🔍</span>
+                              <span className="font-mono text-[9px] uppercase tracking-wider font-bold">Open Screenshot</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between pt-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-zinc-500 text-[9px] uppercase tracking-wider font-extrabold font-mono">Status:</span>
+                          <span className={`inline-block text-[9px] font-bold uppercase font-mono px-2 py-0.5 rounded-full ${
                             dep.status === "approved" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : dep.status === "rejected" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse"
                           }`}>
                             {dep.status === "approved" ? "completed" : dep.status}
@@ -1500,52 +1524,8 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                         </div>
                       </div>
 
-                      {/* Deposit Gamer details block */}
-                      <div className="bg-black/40 border border-zinc-900 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono text-zinc-400">
-                        <div>
-                          <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Gamer Email</span>
-                          <strong className="text-white text-xs">{dep.email}</strong>
-                        </div>
-                        <div>
-                          <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">WhatsApp / Phone</span>
-                          <strong className="text-emerald-400 text-xs">{matchedUser?.phone || "N/A"}</strong>
-                        </div>
-                        <div>
-                          <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Gamer Name</span>
-                          <strong className="text-white text-xs">{matchedUser?.name || "N/A"}</strong>
-                        </div>
-                        <div>
-                          <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">BNY ID</span>
-                          <strong className="text-red-500 text-xs tracking-wider">{matchedUser?.uniqueId || "N/A"}</strong>
-                        </div>
-                        <div>
-                          <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Request Amount</span>
-                          <strong className="text-emerald-500 text-sm font-bold">NPR {dep.amount}</strong>
-                        </div>
-                        <div>
-                          <span className="text-zinc-600 block text-[9px] uppercase tracking-wider font-extrabold mb-0.5">Payment Method</span>
-                          <strong className="text-blue-400 text-xs uppercase">{dep.paymentMethod || "ESEWA"}</strong>
-                        </div>
-                      </div>
-
-                      {dep.proofImage && (
-                        <div className="text-center bg-black/60 p-3 border border-zinc-900/60 rounded-2xl">
-                          <span className="text-zinc-600 block text-[8px] uppercase tracking-wider font-extrabold mb-2 text-left font-mono">Uploaded Deposit Receipt Proof</span>
-                          <a href={dep.proofImage} target="_blank" rel="referrer noopener" className="inline-block relative group overflow-hidden rounded-xl">
-                            <img
-                              src={dep.proofImage}
-                              alt="deposit proof slip"
-                              className="max-h-60 object-contain mx-auto rounded-xl transition-transform duration-300 group-hover:scale-105"
-                            />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-mono text-[9px] uppercase tracking-wider">
-                              View Original Image
-                            </div>
-                          </a>
-                        </div>
-                      )}
-
                       {dep.status === "pending" && (
-                        <div className="flex gap-3 font-mono font-bold">
+                        <div className="flex gap-3 font-mono font-bold pt-2 border-t border-zinc-900/40">
                           <button
                             onClick={() => rejectDeposit(dep)}
                             className="flex-1 bg-red-950/20 hover:bg-red-900/30 border border-red-900/30 text-red-500 text-[11px] py-3 rounded-xl cursor-pointer uppercase tracking-wider transition-all"
@@ -3216,6 +3196,32 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                 >
                   ADD CREDITS
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {previewImage && (
+          <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 z-[99999]">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center"
+            >
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="absolute -top-12 right-0 text-zinc-400 hover:text-white bg-black/50 hover:bg-zinc-900 border border-zinc-800 px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 text-[10px] font-mono font-bold uppercase tracking-wider"
+              >
+                <X className="w-4 h-4" />
+                <span>Close Preview</span>
+              </button>
+              <div className="bg-zinc-950/80 border border-zinc-900 p-2 rounded-2xl max-w-full overflow-hidden flex items-center justify-center">
+                <img
+                  src={previewImage}
+                  alt="Full proof receipt preview"
+                  className="max-h-[80vh] max-w-full object-contain rounded-xl select-none"
+                />
               </div>
             </motion.div>
           </div>
