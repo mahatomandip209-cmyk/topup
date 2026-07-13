@@ -1114,6 +1114,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                   {[
                     { id: "dashboard", label: "Dashboard", icon: TrendingUp },
                     { id: "orders", label: `Fulfill Orders (${pendingOrdersCount})`, icon: ClipboardList },
+                    { id: "deposits", label: `Deposits (${pendingDepositsCount})`, icon: Wallet },
                     { id: "users", label: `User Balances (${allUsers.length})`, icon: Users },
                     { id: "categories", label: `Categories (${dbCategories.length})`, icon: Tags },
                     { id: "games", label: "Games", icon: Database },
