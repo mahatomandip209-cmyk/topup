@@ -1,6 +1,6 @@
 {
-  "name": "BNY SHOP",
-  "description": "BNY SHOP is a premium, high-speed game credit and digital streaming top-up platform with secure payments and 24/7 support.",
+  "name": "BNY TOPUP",
+  "description": "BNY TOPUP is a premium, high-speed game credit and digital streaming top-up platform with secure payments and 24/7 support.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

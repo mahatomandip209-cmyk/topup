@@ -2017,7 +2017,6 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                     <div className="space-y-1 min-w-0">
                       <span className="text-[10px] text-red-500 font-mono uppercase font-bold tracking-wider">Category</span>
                       <h4 className="text-white font-sans font-bold text-sm truncate">{cat.name}</h4>
-                      <p className="text-[9px] text-zinc-500 font-mono">ID: {cat.id}</p>
                     </div>
                     <div className="flex gap-2">
                       <button

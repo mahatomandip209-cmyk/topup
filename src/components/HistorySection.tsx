@@ -47,7 +47,29 @@ export default function HistorySection({
   const [expandedDeposit, setExpandedDeposit] = useState<string | null>(null);
 
   const handleOrderInquiry = (order: any) => {
-    const trackingId = `ORD-${order.id.slice(0, 8).toUpperCase()}`;
+    const getDisplayOrderId = (o: any) => {
+      const targetId = o.orderId || o.id || "";
+      if (targetId.startsWith("BNY-")) {
+        const suffix = targetId.slice(4);
+        if (/^\d{6}$/.test(suffix)) {
+          return targetId;
+        }
+        const cleanDigits = suffix.replace(/\D/g, "");
+        if (cleanDigits.length >= 6) {
+          return `BNY-${cleanDigits.slice(0, 6)}`;
+        } else {
+          return `BNY-${cleanDigits.padEnd(6, "0")}`;
+        }
+      }
+      let hash = 0;
+      const cleanStr = targetId.replace(/[^A-Za-z0-9]/g, "");
+      for (let i = 0; i < cleanStr.length; i++) {
+        hash = (hash * 31 + cleanStr.charCodeAt(i)) % 1000000;
+      }
+      const numStr = String(Math.abs(hash)).padStart(6, "0");
+      return `BNY-${numStr}`;
+    };
+    const trackingId = getDisplayOrderId(order);
     setSupportTopic(`Inquiry about ${order.game} Order ${trackingId}`);
     setSupportMessage(
       `Hello team, I have a question regarding my order of ${order.packageName} for game ${order.game}.\nOrder ID: ${trackingId}\nPlayer UID: ${order.playerUid}\nPrice: RS ${order.price}\nStatus: ${order.status.toUpperCase()}`
@@ -285,7 +307,7 @@ export default function HistorySection({
                         "category"
                       ];
                       const customFields = Object.entries(order).filter(
-                        ([key]) => !standardKeys.includes(key)
+                        ([key]) => !standardKeys.includes(key) && !key.toLowerCase().includes("email")
                       );
 
                       if (customFields.length === 0) return null;
