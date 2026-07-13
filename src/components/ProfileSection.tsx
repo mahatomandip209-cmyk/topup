@@ -101,12 +101,27 @@ export default function ProfileSection({
   // Helper to trigger support message setup for a specific order inquiry
   const handleOrderInquiry = (order: any) => {
     const getDisplayOrderId = (o: any) => {
-      if (o.orderId && o.orderId.startsWith("BNY-")) {
-        return o.orderId;
+      const targetId = o.orderId || o.id || "";
+      if (targetId.startsWith("BNY-")) {
+        const suffix = targetId.slice(4);
+        if (/^\d{6}$/.test(suffix)) {
+          return targetId;
+        }
+        const cleanDigits = suffix.replace(/\D/g, "");
+        if (cleanDigits.length >= 6) {
+          return `BNY-${cleanDigits.slice(0, 6)}`;
+        } else {
+          return `BNY-${cleanDigits.padEnd(6, "0")}`;
+        }
       }
-      const cleanId = (o.orderId || o.id || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
-      const suffix = cleanId.slice(0, 8).padEnd(8, "X");
-      return `BNY-${suffix}`;
+      // Convert string to a deterministic 6-digit number
+      let hash = 0;
+      const cleanStr = targetId.replace(/[^A-Za-z0-9]/g, "");
+      for (let i = 0; i < cleanStr.length; i++) {
+        hash = (hash * 31 + cleanStr.charCodeAt(i)) % 1000000;
+      }
+      const numStr = String(Math.abs(hash)).padStart(6, "0");
+      return `BNY-${numStr}`;
     };
     const trackingId = getDisplayOrderId(order);
     setSupportTopic(`Inquiry about ${order.game} Order ${trackingId}`);

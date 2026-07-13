@@ -126,12 +126,27 @@ export default function HistorySection({
           ) : (
             userOrders.map((order) => {
               const getDisplayOrderId = (o: any) => {
-                if (o.orderId && o.orderId.startsWith("BNY-")) {
-                  return o.orderId;
+                const targetId = o.orderId || o.id || "";
+                if (targetId.startsWith("BNY-")) {
+                  const suffix = targetId.slice(4);
+                  if (/^\d{6}$/.test(suffix)) {
+                    return targetId;
+                  }
+                  const cleanDigits = suffix.replace(/\D/g, "");
+                  if (cleanDigits.length >= 6) {
+                    return `BNY-${cleanDigits.slice(0, 6)}`;
+                  } else {
+                    return `BNY-${cleanDigits.padEnd(6, "0")}`;
+                  }
                 }
-                const cleanId = (o.orderId || o.id || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
-                const suffix = cleanId.slice(0, 8).padEnd(8, "X");
-                return `BNY-${suffix}`;
+                // Convert string to a deterministic 6-digit number
+                let hash = 0;
+                const cleanStr = targetId.replace(/[^A-Za-z0-9]/g, "");
+                for (let i = 0; i < cleanStr.length; i++) {
+                  hash = (hash * 31 + cleanStr.charCodeAt(i)) % 1000000;
+                }
+                const numStr = String(Math.abs(hash)).padStart(6, "0");
+                return `BNY-${numStr}`;
               };
               const trackingId = getDisplayOrderId(order);
               const isVoucher = order.category === "voucher_code" || (order.voucher_codes && order.voucher_codes.length > 0);
@@ -257,6 +272,7 @@ export default function HistorySection({
                         "uniqueId",
                         "userName",
                         "userEmail",
+                        "email",
                         "game",
                         "gameId",
                         "packageName",

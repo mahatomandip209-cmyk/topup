@@ -1022,7 +1022,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
               </h2>
               <p className="text-[10px] text-zinc-500 font-mono tracking-wider uppercase">
                 {adminTab === "dashboard" && "Dashboard Overview"}
-                {adminTab === "orders" && "Fulfill Orders"}
+                {adminTab === "orders" && "Orders"}
                 {adminTab === "deposits" && "Load Deposits"}
                 {adminTab === "users" && "User Balances"}
                 {adminTab === "vouchers" && "Instant Voucher stock manager"}
@@ -1114,7 +1114,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                 <div className="space-y-1.5">
                   {[
                     { id: "dashboard", label: "Dashboard", icon: TrendingUp },
-                    { id: "orders", label: `Fulfill Orders (${pendingOrdersCount})`, icon: ClipboardList },
+                    { id: "orders", label: `Orders (${pendingOrdersCount})`, icon: ClipboardList },
                     { id: "deposits", label: `Deposits (${pendingDepositsCount})`, icon: Wallet },
                     { id: "users", label: `User Balances (${allUsers.length})`, icon: Users },
                     { id: "categories", label: `Categories (${dbCategories.length})`, icon: Tags },
@@ -1389,7 +1389,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
           <div className="space-y-6 animate-fadeIn">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h3 className="font-orbitron font-extrabold text-lg uppercase tracking-widest text-white flex items-center gap-2">
-                <ClipboardList className="w-5 h-5 text-red-500" /> Fulfill Orders
+                <ClipboardList className="w-5 h-5 text-red-500" /> Orders
               </h3>
 
               {/* FILTER BAR */}
@@ -1451,12 +1451,27 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                             <span>Order ID:</span>
                             {(() => {
                               const getDisplayOrderId = (o: any) => {
-                                if (o.orderId && o.orderId.startsWith("BNY-")) {
-                                  return o.orderId;
+                                const targetId = o.orderId || o.id || "";
+                                if (targetId.startsWith("BNY-")) {
+                                  const suffix = targetId.slice(4);
+                                  if (/^\d{6}$/.test(suffix)) {
+                                    return targetId;
+                                  }
+                                  const cleanDigits = suffix.replace(/\D/g, "");
+                                  if (cleanDigits.length >= 6) {
+                                    return `BNY-${cleanDigits.slice(0, 6)}`;
+                                  } else {
+                                    return `BNY-${cleanDigits.padEnd(6, "0")}`;
+                                  }
                                 }
-                                const cleanId = (o.orderId || o.id || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
-                                const suffix = cleanId.slice(0, 8).padEnd(8, "X");
-                                return `BNY-${suffix}`;
+                                // Convert string to a deterministic 6-digit number
+                                let hash = 0;
+                                const cleanStr = targetId.replace(/[^A-Za-z0-9]/g, "");
+                                for (let i = 0; i < cleanStr.length; i++) {
+                                  hash = (hash * 31 + cleanStr.charCodeAt(i)) % 1000000;
+                                }
+                                const numStr = String(Math.abs(hash)).padStart(6, "0");
+                                return `BNY-${numStr}`;
                               };
                               const oid = getDisplayOrderId(order);
                               return (
@@ -3138,9 +3153,7 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
                 const handleDeleteCode = async (codeId: string) => {
                   if (await confirmAction("Are you sure you want to delete this voucher code?")) {
                     try {
-                      const updatedVoucherCodes = { ...rawCodes };
-                      delete updatedVoucherCodes[codeId];
-                      await set(ref(db, `games/${selectedVoucherGameId}/voucher_codes`), updatedVoucherCodes);
+                      await remove(ref(db, `games/${selectedVoucherGameId}/voucher_codes/${codeId}`));
                       alert("Voucher code deleted.");
                     } catch (err: any) {
                       alert("Error deleting: " + err.message);

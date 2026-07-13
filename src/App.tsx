@@ -752,10 +752,10 @@ export default function App() {
     let updatedVoucherCodesMap: any = null;
     
     // Generate order IDs early so we have them for the voucher markers and the payloads
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const digits = "0123456789";
     let randSuffix = "";
-    for (let i = 0; i < 8; i++) {
-      randSuffix += chars.charAt(Math.floor(Math.random() * chars.length));
+    for (let i = 0; i < 6; i++) {
+      randSuffix += digits.charAt(Math.floor(Math.random() * digits.length));
     }
     const orderId = `BNY-${randSuffix}`;
     const userOrderId = orderId;
