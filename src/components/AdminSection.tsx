@@ -141,6 +141,10 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
 
   // Banner state
   const [newBannerUrl, setNewBannerUrl] = useState("");
+  const [newBannerLink, setNewBannerLink] = useState("");
+  const [editingBannerIndex, setEditingBannerIndex] = useState<number | null>(null);
+  const [editBannerUrl, setEditBannerUrl] = useState("");
+  const [editBannerLink, setEditBannerLink] = useState("");
 
   // Requirements form state
   const [newReqName, setNewReqName] = useState("");
@@ -279,6 +283,8 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
       const val = snapshot.val();
       if (val) {
         setCurrentBanners(Array.isArray(val) ? val : Object.values(val));
+      } else {
+        setCurrentBanners([]);
       }
     });
 
@@ -937,12 +943,41 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
 
   // ---------------- SLIDESHOW BANNERS CRUD ----------------
   const addBanner = async () => {
-    if (!newBannerUrl.trim()) return;
-    const updated = [...currentBanners, newBannerUrl.trim()];
+    if (!newBannerUrl.trim()) {
+      alert("Please enter a banner URL or upload an image first.");
+      return;
+    }
+    const newBanner = {
+      url: newBannerUrl.trim(),
+      link: newBannerLink.trim() || ""
+    };
+    const updated = [...currentBanners, newBanner];
     try {
       await set(ref(db, "banners"), updated);
       setNewBannerUrl("");
+      setNewBannerLink("");
       alert("Slideshow banner added successfully!");
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const updateBanner = async (idx: number) => {
+    if (!editBannerUrl.trim()) {
+      alert("Please enter a banner URL or upload an image first.");
+      return;
+    }
+    const updated = [...currentBanners];
+    updated[idx] = {
+      url: editBannerUrl.trim(),
+      link: editBannerLink.trim() || ""
+    };
+    try {
+      await set(ref(db, "banners"), updated);
+      setEditingBannerIndex(null);
+      setEditBannerUrl("");
+      setEditBannerLink("");
+      alert("Slideshow banner updated successfully!");
     } catch (err: any) {
       alert(err.message);
     }
@@ -3351,62 +3386,270 @@ export default function AdminSection({ db, currentUser, services, setActiveSecti
 
         {/* 6. SLIDESHOW BANNERS CRUD */}
         {adminTab === "banners" && (
-          <div className="space-y-4 text-xs font-mono">
+          <div className="space-y-5 text-xs font-mono">
             {/* Add Banner Area */}
-            <div className="bg-black/30 border border-zinc-900 p-4 rounded-2xl space-y-3">
-              <span className="text-[10px] text-red-500 font-extrabold uppercase tracking-widest block">
-                Add Slide Banner Image URL
+            <div className="bg-black/30 border border-zinc-900 p-5 rounded-2xl space-y-4">
+              <span className="text-[10px] text-red-500 font-extrabold uppercase tracking-widest block font-orbitron">
+                Upload or Add Slide Banner
               </span>
 
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Paste banner image absolute URL (https://...)"
-                  value={newBannerUrl}
-                  onChange={(e) => setNewBannerUrl(e.target.value)}
-                  className="flex-1 bg-black border border-zinc-900 rounded-lg px-3 py-2.5 text-white placeholder-zinc-700 text-xs focus:outline-none focus:border-red-500"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <label className="text-[10px] text-zinc-500 font-bold uppercase block">Banner Image Source</label>
+                  
+                  {/* File Upload Button */}
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center justify-center gap-2 bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-xl px-4 py-3 text-xs text-zinc-300 cursor-pointer transition-all">
+                      <Upload className="w-4 h-4 text-red-500" />
+                      <span>Choose Image File (Auto Base64)</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setNewBannerUrl(reader.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="text-center text-zinc-600 text-[10px] uppercase font-bold">- OR -</div>
+
+                  {/* URL Text Input */}
+                  <input
+                    type="text"
+                    placeholder="Paste banner image absolute URL (https://...)"
+                    value={newBannerUrl.startsWith("data:image") ? "" : newBannerUrl}
+                    onChange={(e) => setNewBannerUrl(e.target.value)}
+                    className="w-full bg-black border border-zinc-900 rounded-xl px-3 py-3 text-white placeholder-zinc-700 text-xs focus:outline-none focus:border-red-500"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  {/* Optional Redirect Link */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-zinc-500 font-bold uppercase block">Redirect Link (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. https://example.com/packages"
+                      value={newBannerLink}
+                      onChange={(e) => setNewBannerLink(e.target.value)}
+                      className="w-full bg-black border border-zinc-900 rounded-xl px-3 py-3 text-white placeholder-zinc-700 text-xs focus:outline-none focus:border-red-500 font-sans"
+                    />
+                  </div>
+
+                  {/* Preview Box */}
+                  {newBannerUrl && (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-zinc-500 font-bold uppercase block">Selected Image Preview</label>
+                      <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950">
+                        <img
+                          src={newBannerUrl}
+                          alt="Banner Preview"
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setNewBannerUrl("")}
+                          className="absolute top-2 right-2 p-1.5 bg-black/80 hover:bg-black rounded-lg text-zinc-400 hover:text-white transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
                 <button
                   onClick={addBanner}
-                  className="bg-red-600 text-white px-4 rounded-lg font-bold flex items-center justify-center cursor-pointer hover:bg-red-700"
+                  className="bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all shadow-[0_4px_12px_rgba(220,38,38,0.2)] active:scale-95"
                 >
                   <Plus className="w-4 h-4" />
+                  <span>ADD SLIDE BANNER</span>
                 </button>
               </div>
             </div>
 
             {/* Current Slide Banners List */}
-            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 no-scrollbar">
+            <div className="space-y-3">
               <span className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-widest block">
                 Current Active Slides ({currentBanners.length})
               </span>
 
-              {currentBanners.map((url, index) => (
-                <div
-                  key={index}
-                  className="bg-black/30 border border-zinc-900 p-3 rounded-2xl flex items-center gap-3 justify-between"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <img
-                      src={url}
-                      alt={`Slide ${index + 1}`}
-                      className="w-14 aspect-video object-cover rounded border border-zinc-800"
-                      referrerPolicy="no-referrer"
-                    />
-                    <span className="text-[10px] text-zinc-400 truncate block flex-1 font-mono">
-                      {url}
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() => deleteBanner(index)}
-                    className="p-1.5 hover:bg-red-950/20 rounded-lg border border-transparent hover:border-red-900/30 text-zinc-500 hover:text-red-500 transition-all cursor-pointer"
-                    title="Remove Slide"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+              {currentBanners.length === 0 ? (
+                <div className="bg-black/20 border border-zinc-900 p-8 rounded-2xl text-center text-zinc-500">
+                  No active slide banners found. Upload one above.
                 </div>
-              ))}
+              ) : (
+                <div className="grid grid-cols-1 gap-3 max-h-[500px] overflow-y-auto pr-1 no-scrollbar">
+                  {currentBanners.map((banner, index) => {
+                    const bannerUrl = typeof banner === "string" ? banner : (banner?.url || "");
+                    const bannerLink = typeof banner === "string" ? "" : (banner?.link || "");
+                    const isEditing = editingBannerIndex === index;
+
+                    return (
+                      <div
+                        key={index}
+                        className={`bg-black/30 border rounded-2xl p-4 transition-all ${
+                          isEditing ? "border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.05)]" : "border-zinc-900 hover:border-zinc-800"
+                        }`}
+                      >
+                        {isEditing ? (
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
+                              <span className="text-[10px] text-red-500 font-bold uppercase tracking-wider">Editing Banner #{index + 1}</span>
+                              <button
+                                onClick={() => setEditingBannerIndex(null)}
+                                className="text-zinc-500 hover:text-white"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-3">
+                                <label className="text-[10px] text-zinc-500 font-bold uppercase block">New Image Source</label>
+                                <div className="flex flex-col gap-2">
+                                  <label className="flex items-center justify-center gap-2 bg-zinc-900/40 hover:bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-xl px-3 py-2.5 text-xs text-zinc-300 cursor-pointer transition-all">
+                                    <Upload className="w-3.5 h-3.5 text-red-500" />
+                                    <span>Upload New Image</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          const reader = new FileReader();
+                                          reader.onloadend = () => {
+                                            setEditBannerUrl(reader.result as string);
+                                          };
+                                          reader.readAsDataURL(file);
+                                        }
+                                      }}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                </div>
+                                <input
+                                  type="text"
+                                  placeholder="Or paste image URL"
+                                  value={editBannerUrl.startsWith("data:image") ? "" : editBannerUrl}
+                                  onChange={(e) => setEditBannerUrl(e.target.value)}
+                                  className="w-full bg-black border border-zinc-900 rounded-xl px-3 py-2.5 text-white placeholder-zinc-700 text-xs focus:outline-none focus:border-red-500"
+                                />
+                              </div>
+
+                              <div className="space-y-3">
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] text-zinc-500 font-bold uppercase block">Redirect Link (Optional)</label>
+                                  <input
+                                    type="text"
+                                    placeholder="https://..."
+                                    value={editBannerLink}
+                                    onChange={(e) => setEditBannerLink(e.target.value)}
+                                    className="w-full bg-black border border-zinc-900 rounded-xl px-3 py-2.5 text-white placeholder-zinc-700 text-xs focus:outline-none focus:border-red-500 font-sans"
+                                  />
+                                </div>
+
+                                <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950">
+                                  <img
+                                    src={editBannerUrl || bannerUrl}
+                                    alt="Edit Banner Preview"
+                                    className="w-full h-full object-cover"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2 border-t border-zinc-900">
+                              <button
+                                onClick={() => setEditingBannerIndex(null)}
+                                className="bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white px-4 py-2 rounded-xl font-bold cursor-pointer transition-colors"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => updateBanner(index)}
+                                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                              >
+                                <Save className="w-3.5 h-3.5" />
+                                <span>Save Changes</span>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
+                            <div className="flex items-start gap-3 min-w-0 flex-1">
+                              <div className="relative aspect-video w-24 sm:w-28 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950 flex-shrink-0">
+                                <img
+                                  src={bannerUrl}
+                                  alt={`Slide ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                  referrerPolicy="no-referrer"
+                                />
+                              </div>
+                              <div className="min-w-0 flex-1 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-zinc-500 font-bold uppercase">Banner #{index + 1}</span>
+                                  {bannerLink && (
+                                    <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[9px] text-amber-500 font-bold uppercase tracking-wide font-sans">
+                                      Redirect Active
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-zinc-400 truncate font-mono select-all animate-none" title={bannerUrl}>
+                                  <span className="text-zinc-600 font-bold mr-1">IMG:</span> {bannerUrl}
+                                </div>
+                                {bannerLink ? (
+                                  <div className="text-[10px] text-amber-500 truncate font-mono select-all animate-none" title={bannerLink}>
+                                    <span className="text-zinc-600 font-bold mr-1">LINK:</span> {bannerLink}
+                                  </div>
+                                ) : (
+                                  <div className="text-[9px] text-zinc-600 italic">No redirect link</div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-t-0 border-zinc-900 pt-3 sm:pt-0">
+                              <button
+                                onClick={() => {
+                                  setEditingBannerIndex(index);
+                                  setEditBannerUrl(bannerUrl);
+                                  setEditBannerLink(bannerLink);
+                                }}
+                                className="flex-1 sm:flex-initial p-2 bg-zinc-900/60 hover:bg-zinc-900 hover:text-white rounded-xl border border-zinc-800 text-zinc-400 transition-all cursor-pointer flex items-center justify-center gap-1 text-[10px] font-bold"
+                                title="Edit Slide"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-red-500" />
+                                <span>EDIT</span>
+                              </button>
+                              <button
+                                onClick={() => deleteBanner(index)}
+                                className="p-2 bg-red-950/10 hover:bg-red-950/30 border border-red-900/20 text-zinc-400 hover:text-red-500 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 text-[10px] font-bold"
+                                title="Remove Slide"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span className="sm:hidden">DELETE</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}

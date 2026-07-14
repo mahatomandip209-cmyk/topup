@@ -111,13 +111,13 @@ export default function App() {
   const [activeCurrency, setActiveCurrency] = useState<"NPR" | "AED" | "USD">("NPR");
 
   // Category selection state
-  const [selectedCategory, setSelectedCategory] = useState<string>("topup");
-  const [isCategoryInitialized, setIsCategoryInitialized] = useState<boolean>(false);
   const [dbCategories, setDbCategories] = useState<any[]>([
     { id: "topup", name: "Direct Top-up" },
     { id: "voucher", name: "Voucher Code" },
     { id: "subscription", name: "Premium Subscription" }
   ]);
+  const [selectedCategory, setSelectedCategory] = useState<string>(dbCategories[0]?.id || "topup");
+  const [isCategoryInitialized, setIsCategoryInitialized] = useState<boolean>(false);
 
   // Active service selection (one of the 10 services)
   const [activeService, setActiveService] = useState<ServiceItem | null>(null);
@@ -212,38 +212,9 @@ export default function App() {
           }).filter(Boolean);
         }
         setDbCategories(list);
-        if (!isCategoryInitialized) {
-          // Find topup category robustly (by ID or Name)
-          const topupCat = list.find(c => {
-            const id = (c.id || "").toLowerCase();
-            const name = (c.name || "").toLowerCase();
-            return (
-              name.includes("top-up") || 
-              name.includes("topup") || 
-              name.includes("direct top") ||
-              id === "topup" || 
-              id === "top_up" || 
-              id === "top-up"
-            );
-          });
-
-          if (topupCat) {
-            setSelectedCategory(topupCat.id);
-            setIsCategoryInitialized(true);
-          } else if (list.length > 0) {
-            // If no topup category found, default to the first one that doesn't contain "voucher"
-            const firstNonVoucher = list.find(c => {
-              const id = (c.id || "").toLowerCase();
-              const name = (c.name || "").toLowerCase();
-              return !id.includes("voucher") && !name.includes("voucher");
-            });
-            if (firstNonVoucher) {
-              setSelectedCategory(firstNonVoucher.id);
-            } else {
-              setSelectedCategory(list[0].id);
-            }
-            setIsCategoryInitialized(true);
-          }
+        if (!isCategoryInitialized && list.length > 0) {
+          setSelectedCategory(list[0].id);
+          setIsCategoryInitialized(true);
         }
       }
     });
@@ -405,7 +376,7 @@ export default function App() {
     if (typeof window !== "undefined" && (window.location.pathname === "/admin" || window.location.pathname.endsWith("/admin") || window.location.href.includes("/admin"))) {
       setActiveSection("admin");
     }
-    setSelectedCategory("topup");
+    setSelectedCategory(dbCategories[0]?.id || "topup");
   }, []);
 
   // Set up custom glowing alert and confirm dialogue overrides
@@ -1465,18 +1436,33 @@ export default function App() {
                 className="flex w-full h-full transition-transform duration-1000 ease-in-out"
                 style={{ transform: `translateX(-${slideIndex * 100}%)` }}
               >
-                {dbBanners.map((url, index) => (
-                  <div key={index} className="min-w-full h-full relative">
+                {dbBanners.map((banner, index) => {
+                  const imageUrl = typeof banner === "string" ? banner : (banner?.url || "");
+                  const redirectUrl = typeof banner === "string" ? "" : (banner?.link || "");
+                  
+                  const imgContent = (
                     <img
-                      src={url}
+                      src={imageUrl}
                       alt={`Promo Slide ${index + 1}`}
                       referrerPolicy="no-referrer"
                       className="w-full h-full object-cover"
                     />
-                    {/* Dark gradient mask */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-bg-navy via-transparent to-transparent"></div>
-                  </div>
-                ))}
+                  );
+
+                  return (
+                    <div key={index} className="min-w-full h-full relative">
+                      {redirectUrl ? (
+                        <a href={redirectUrl} target="_blank" rel="noopener noreferrer" className="block w-full h-full cursor-pointer">
+                          {imgContent}
+                        </a>
+                      ) : (
+                        imgContent
+                      )}
+                      {/* Dark gradient mask */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-bg-navy via-transparent to-transparent pointer-events-none"></div>
+                    </div>
+                  );
+                })}
               </div>
               
               {/* Tagline overlay removed */}
@@ -2259,7 +2245,7 @@ export default function App() {
                     setVoucherSuccessModal(null);
                     setSelectedPkg(null);
                     setFieldsState({});
-                    setSelectedCategory("topup");
+                    setSelectedCategory(dbCategories[0]?.id || "topup");
                     setActiveSection("home");
                     window.location.reload();
                   }}
