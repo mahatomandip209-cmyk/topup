@@ -100,6 +100,13 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
 
+  // Admin Portal Auth States
+  const [adminLoginEmail, setAdminLoginEmail] = useState<string>("");
+  const [adminLoginPassword, setAdminLoginPassword] = useState<string>("");
+  const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
+  const [adminLoginSuccess, setAdminLoginSuccess] = useState<string | null>(null);
+  const [adminLoginLoading, setAdminLoginLoading] = useState<boolean>(false);
+
   // Multi-Currency State
   const [activeCurrency, setActiveCurrency] = useState<"NPR" | "AED" | "USD">("NPR");
 
@@ -318,7 +325,80 @@ export default function App() {
   ]);
 
   // Is Admin detection
-  const isAdmin = currentUser?.email === "mandipmahato717@gmail.com" || (userData as any)?.role === "admin" || (typeof window !== "undefined" && (window.location.pathname === "/admin" || window.location.pathname.endsWith("/admin") || window.location.href.includes("/admin")));
+  const isAdmin = currentUser?.email === "bnyshopadminpanel@gmail.com";
+
+  // PWA/Install Banner States
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallPopup, setShowInstallPopup] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const dismissed = localStorage.getItem("bny_install_dismissed") === "true";
+    const installed = localStorage.getItem("bny_app_installed") === "true";
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+
+    if (!dismissed && !installed && !isStandalone) {
+      const timer = setTimeout(() => {
+        setShowInstallPopup(true);
+      }, 3500); // 3.5s delay for non-obtrusive initial show
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      
+      const dismissed = localStorage.getItem("bny_install_dismissed") === "true";
+      const installed = localStorage.getItem("bny_app_installed") === "true";
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+      
+      if (!dismissed && !installed && !isStandalone) {
+        setShowInstallPopup(true);
+      }
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+
+    const handleAppInstalled = () => {
+      localStorage.setItem("bny_app_installed", "true");
+      setShowInstallPopup(false);
+    };
+
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      try {
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === "accepted") {
+          localStorage.setItem("bny_app_installed", "true");
+          setShowInstallPopup(false);
+        }
+      } catch (err) {
+        console.error("Error with install prompt:", err);
+      }
+      setDeferredPrompt(null);
+    } else {
+      alert("Installation Guide:\n\n• iOS (Safari): Tap the 'Share' icon (bottom or top bar), scroll down, and select 'Add to Home Screen'.\n• Android / Chrome: Tap the browser menu (three dots) and choose 'Install App' or 'Add to Home Screen'.");
+    }
+  };
+
+  const handleDismissInstallPopup = () => {
+    localStorage.setItem("bny_install_dismissed", "true");
+    setShowInstallPopup(false);
+  };
 
   // Detect /admin pathname on load
   useEffect(() => {
@@ -433,7 +513,7 @@ export default function App() {
           phone: regPhone || "",
           country: regCountry || "Nepal",
           referralCode: regReferral || "",
-          role: currentUser.email === "mandipmahato717@gmail.com" ? "admin" : "user"
+          role: currentUser.email === "bnyshopadminpanel@gmail.com" ? "admin" : "user"
         }).catch((err) => console.error("Error initializing user data:", err));
       }
     });
@@ -617,7 +697,7 @@ export default function App() {
         country: regCountry,
         referralCode: regReferral,
         avatarId: "vanguard",
-        role: regEmail === "mandipmahato717@gmail.com" ? "admin" : "user"
+        role: regEmail === "bnyshopadminpanel@gmail.com" ? "admin" : "user"
       });
       setAuthSuccess("Account created successfully!");
     } catch (err: any) {
@@ -629,6 +709,152 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAdminLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminLoginError(null);
+    setAdminLoginSuccess(null);
+
+    const emailTrimmed = (adminLoginEmail || "").trim().toLowerCase();
+    const pass = adminLoginPassword || "";
+
+    if (emailTrimmed !== "bnyshopadminpanel@gmail.com" || pass !== "Bnyshopadmin01!") {
+      setAdminLoginError("Invalid credentials. Only the official BNY Admin can access this panel.");
+      return;
+    }
+
+    setAdminLoginLoading(true);
+    try {
+      // Sign in with Firebase
+      await signInWithEmailAndPassword(auth, "bnyshopadminpanel@gmail.com", "Bnyshopadmin01!");
+      setAdminLoginSuccess("Administrator authenticated successfully!");
+    } catch (err: any) {
+      // On-the-fly provisioning if the user account doesn't exist on standard/empty db
+      if (
+        err.code === "auth/user-not-found" || 
+        err.message?.includes("user-not-found") || 
+        err.code === "auth/invalid-credential" || 
+        err.message?.includes("invalid-credential")
+      ) {
+        try {
+          await createUserWithEmailAndPassword(auth, "bnyshopadminpanel@gmail.com", "Bnyshopadmin01!");
+          setAdminLoginSuccess("Admin account auto-initialized and authenticated!");
+        } catch (regErr: any) {
+          setAdminLoginError("Authentication Failure: " + (regErr.message || "Failed to initialize Admin user."));
+        }
+      } else {
+        setAdminLoginError(err.message || "Failed to authenticate.");
+      }
+    } finally {
+      setAdminLoginLoading(false);
+    }
+  };
+
+  const renderAdminLogin = () => {
+    return (
+      <div className="flex-1 flex flex-col justify-center items-center px-4 py-16 bg-[radial-gradient(circle_at_center,_#0b162c_0%,_#040810_100%)] min-h-[80vh]">
+        <motion.div
+          initial={{ y: -15, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="mb-8 text-center"
+        >
+          <Logo iconSize={32} textClass="text-3xl" />
+          <div className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-500/10 border border-red-500/30 text-[10px] text-red-500 font-bold uppercase tracking-wider font-mono">
+            <ShieldCheck className="w-3.5 h-3.5" /> Secure Admin Portal
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ scale: 0.96, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.05 }}
+          className="w-full max-w-md bg-card-bg rounded-3xl border border-red-500/20 p-8 shadow-[0_0_50px_rgba(239,68,68,0.1)] relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent"></div>
+          
+          <form onSubmit={handleAdminLoginSubmit} className="space-y-6">
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-orbitron font-extrabold tracking-widest text-white uppercase">ADMIN LOGIN</h2>
+              <p className="text-xs text-zinc-400 mt-1.5">Enter credentials to manage products, orders and payments</p>
+            </div>
+
+            {adminLoginError && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3.5 text-xs font-semibold text-red-400 text-center leading-relaxed">
+                {adminLoginError}
+              </div>
+            )}
+            {adminLoginSuccess && (
+              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3.5 text-xs font-semibold text-emerald-400 text-center leading-relaxed">
+                {adminLoginSuccess}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Admin Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
+                <input
+                  type="email"
+                  value={adminLoginEmail}
+                  onChange={(e) => setAdminLoginEmail(e.target.value)}
+                  placeholder="admin@example.com"
+                  className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-10 py-3.5 rounded-xl focus:outline-none focus:border-red-500 transition-all font-mono text-sm"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Security Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
+                <input
+                  type="password"
+                  value={adminLoginPassword}
+                  onChange={(e) => setAdminLoginPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-black/50 border border-zinc-900 text-white placeholder-zinc-700 px-10 py-3.5 rounded-xl focus:outline-none focus:border-red-500 transition-all font-mono text-sm"
+                  required
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={adminLoginLoading}
+              className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 active:scale-[0.98] transition-all py-3.5 rounded-xl font-bold font-orbitron tracking-widest text-xs flex items-center justify-center gap-2 cursor-pointer border border-red-600/50 shadow-[0_4px_15px_rgba(220,38,38,0.25)] mt-4"
+            >
+              {adminLoginLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <UserCheck className="w-4 h-4" />
+                  AUTHENTICATE ADMIN
+                </>
+              )}
+            </button>
+            
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSection("home");
+                  // Clear URL path to home as well
+                  if (typeof window !== "undefined" && window.history.pushState) {
+                    window.history.pushState(null, "", "/");
+                  }
+                }}
+                className="text-zinc-500 hover:text-white transition-colors text-xs font-semibold uppercase tracking-wider font-mono hover:underline cursor-pointer"
+              >
+                &larr; Back to Shop Home
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </div>
+    );
   };
 
   const handleLogout = async () => {
@@ -1009,7 +1235,10 @@ export default function App() {
 
       {/* AUTH SCREEN VIEW */}
       {!currentUser && !authInitializing && !isAdmin && (
-        <div id="auth-screen" className="flex-1 flex flex-col justify-center items-center px-4 py-12 bg-[radial-gradient(circle_at_center,_#0b162c_0%,_#040810_100%)]">
+        activeSection === "admin" ? (
+          renderAdminLogin()
+        ) : (
+          <div id="auth-screen" className="flex-1 flex flex-col justify-center items-center px-4 py-12 bg-[radial-gradient(circle_at_center,_#0b162c_0%,_#040810_100%)]">
           <motion.div
             initial={{ y: -15, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -1208,6 +1437,7 @@ export default function App() {
             )}
           </motion.div>
         </div>
+        )
       )}
 
       {/* MAIN APPLICATION INTERFACE */}
@@ -1735,16 +1965,20 @@ export default function App() {
               )}
 
               {/* 6. ADMIN PORTAL SECTION */}
-              {activeSection === "admin" && isAdmin && (
-                <motion.div
-                  key="admin"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <AdminSection db={db} currentUser={currentUser} services={dbServices.length > 0 ? dbServices : servicesData} setActiveSection={setActiveSection} customConfirm={(window as any).customConfirm} />
-                </motion.div>
+              {activeSection === "admin" && (
+                isAdmin ? (
+                  <motion.div
+                    key="admin"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <AdminSection db={db} currentUser={currentUser} services={dbServices.length > 0 ? dbServices : servicesData} setActiveSection={setActiveSection} customConfirm={(window as any).customConfirm} />
+                  </motion.div>
+                ) : (
+                  renderAdminLogin()
+                )
               )}
 
             </AnimatePresence>
@@ -2158,6 +2392,51 @@ export default function App() {
             </motion.div>
           </div>
         )}
+
+        {/* BNY TOPUP App Install Prompt Banner */}
+        {showInstallPopup && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="fixed bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-[380px] z-[9999] bg-[#070d19]/95 backdrop-blur-md border border-brand-orange/30 shadow-[0_10px_30px_rgba(249,115,22,0.15)] rounded-2xl p-4 flex items-center justify-between gap-4"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <img
+                src="https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg"
+                alt="BNY TOPUP logo"
+                className="w-12 h-12 rounded-xl object-cover border border-brand-orange/20 shadow-md flex-shrink-0"
+                referrerPolicy="no-referrer"
+              />
+              <div className="min-w-0">
+                <h4 className="text-white font-bold text-sm tracking-tight truncate">
+                  BNY TOPUP
+                </h4>
+                <p className="text-zinc-400 text-xs font-medium truncate mt-0.5">
+                  Install our app for a faster & better experience
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={handleInstallClick}
+                className="bg-brand-orange hover:bg-brand-orange/90 text-white font-bold text-xs px-3.5 py-2 rounded-xl cursor-pointer transition-colors shadow-sm"
+              >
+                Install
+              </button>
+              <button
+                onClick={handleDismissInstallPopup}
+                className="text-zinc-400 hover:text-white p-1.5 rounded-lg hover:bg-zinc-800/60 transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+
       </AnimatePresence>
     </div>
   );
